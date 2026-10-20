@@ -42,7 +42,7 @@ def test_list_categories():
 
 
 def test_mau_01_filter_active_categories():
-    # Test đề mẫu MAU-01
+    # Lọc danh mục đang hoạt động
     response = client.get("/api/v1/categories?is_active=true")
     assert response.status_code == 200
     data = response.json()

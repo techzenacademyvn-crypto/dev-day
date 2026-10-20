@@ -3,12 +3,12 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Quản Lý Danh Mục</h1>
-        <p class="page-desc">Mẫu chuẩn mực (Benchmark) cho giáo án Techzen (Đề MAU-01)</p>
+        <p class="page-desc">Danh mục sản phẩm của cửa hàng</p>
       </div>
       <button @click="openCreateModal" class="btn-primary">+ Thêm Danh Mục</button>
     </div>
 
-    <!-- Bộ lọc đề mẫu MAU-01 -->
+    <!-- Bộ lọc theo trạng thái và tìm theo tên -->
     <div class="filter-bar">
       <div class="filter-tabs">
         <button
@@ -21,7 +21,7 @@
           @click="setStatusFilter(true)"
           :class="['tab-btn', activeTab === true ? 'active' : '']"
         >
-          Đang Hoạt Động (MAU-01)
+          Đang Hoạt Động
         </button>
         <button
           @click="setStatusFilter(false)"

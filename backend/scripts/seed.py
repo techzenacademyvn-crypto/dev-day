@@ -1,10 +1,8 @@
-"""Script nạp dữ liệu mẫu cho hệ thống TZ Shop (Ship It With AI).
+"""Script nạp dữ liệu mẫu cho TZ Shop.
 Đặc tả dữ liệu:
   - 2 Tài khoản nhân viên (Admin & Staff)
   - 8 Danh mục
-  - 40 Sản phẩm (giá lẻ Decimal, có tồn kho = 0)
-  - 25 Khách hàng (3 khách bị xoá mềm: bẫy Soft Delete)
-  - 60 Đơn hàng (có đơn lúc 23:30 GMT+7: bẫy Múi giờ, có đơn của khách đã xoá)
+  - 40 Sản phẩm (giá có 2 số lẻ, có sản phẩm tồn kho = 0)
 Tính chất: Idempotent (chạy lại xóa sạch và nạp lại chính xác).
 """
 import sys
@@ -104,17 +102,16 @@ def seed_data(force: bool = False):
 
         # ----------------------------------------------------------------------
         # 3. Sản phẩm (40 Products - 5 sp/danh mục)
-        # Bẫy Decimal: giá có phần lẻ (.99, .49, .95, .50)
-        # Bẫy Tồn kho: có sản phẩm stock = 0
+        # Giá có phần lẻ (.99, .49, .95, .50); có sản phẩm stock = 0
         # ----------------------------------------------------------------------
-        print("[*] 3/3. Nạp 40 sản phẩm (gài bẫy Decimal & tồn kho 0)...")
+        print("[*] 3/3. Nạp 40 sản phẩm...")
         raw_products = [
             # Cat 1: Điện tử
             (0, "Tai nghe không dây Bluetooth True Wireless TZ-Pod", "PRD-001", "49.99", 50, True),
             (0, "Chuột công thái học Wireless Silent", "PRD-002", "24.50", 80, False),
             (0, "Bàn phím cơ cơ học RGB Blue Switch", "PRD-003", "89.95", 35, True),
             (0, "Củ sạc nhanh 65W GaN 3 cổng", "PRD-004", "29.99", 100, False),
-            (0, "Pin sạc dự phòng 20000mAh PowerDelivery", "PRD-005", "39.49", 0, False),  # Bẫy hết hàng (stock=0)
+            (0, "Pin sạc dự phòng 20000mAh PowerDelivery", "PRD-005", "39.49", 0, False),  # hết hàng
 
             # Cat 2: Điện gia dụng
             (1, "Nồi chiên không dầu điện tử 6.5L", "PRD-006", "119.99", 25, True),
@@ -128,7 +125,7 @@ def seed_data(force: bool = False):
             (2, "Quần Tây âu co giãn 4 chiều Slimfit", "PRD-012", "32.50", 45, False),
             (2, "Áo khoác gió thể thao nam chống nước", "PRD-013", "42.99", 30, False),
             (2, "Áo thun Cotton trơn thoáng mát", "PRD-014", "9.99", 150, False),
-            (2, "Quần Short Kaki dạo phố phong cách", "PRD-015", "16.49", 0, False),  # Bẫy hết hàng (stock=0)
+            (2, "Quần Short Kaki dạo phố phong cách", "PRD-015", "16.49", 0, False),  # hết hàng
 
             # Cat 4: Thời trang Nữ
             (3, "Đầm suông công sở phối ren cao cấp", "PRD-016", "45.99", 20, True),

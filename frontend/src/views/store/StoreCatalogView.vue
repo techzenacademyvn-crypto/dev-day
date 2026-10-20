@@ -3,7 +3,7 @@
     <div class="hero-banner">
       <div class="hero-content">
         <h1>Cửa Hàng Trực Tuyến TZ Shop</h1>
-        <p>Hệ thống bán hàng phục vụ dự án thực hành Ship It With AI</p>
+        <p>Đồ công nghệ, gia dụng, thời trang và nhiều hơn nữa</p>
       </div>
     </div>
 

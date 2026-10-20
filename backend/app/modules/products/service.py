@@ -15,40 +15,8 @@ class ProductService:
         page_size: int = 20,
         filters: Optional[ProductFilter] = None,
     ) -> Tuple[List[Product], int]:
-        """Lấy danh sách sản phẩm (20 sp/trang cố định).
-        
-        VÙNG MỞ DÀNH CHO HỌC VIÊN:
-        - [N1-03] Tìm sản phẩm theo tên (ilike)
-        - [N1-05] Lọc sản phẩm theo danh mục (category_id)
-        - [N1-06] Lọc sản phẩm sắp hết hàng (stock <= low_stock_threshold)
-        - [N5-03] Sắp xếp sản phẩm theo giá / tồn kho
-        """
+        """Lấy danh sách sản phẩm, 20 sản phẩm mỗi trang."""
         query = db.query(Product).filter(Product.deleted_at.is_(None))
-
-        if filters:
-            # ------------------------------------------------------------------
-            # TODO [N1-03]: Học viên triển khai tìm kiếm theo tên ở đây
-            # ------------------------------------------------------------------
-            if filters.search:
-                pass  # Cố ý để trống cho bài tập N1-03
-
-            # ------------------------------------------------------------------
-            # TODO [N1-05]: Học viên triển khai lọc theo danh mục ở đây
-            # ------------------------------------------------------------------
-            if filters.category_id is not None:
-                pass  # Cố ý để trống cho bài tập N1-05
-
-            # ------------------------------------------------------------------
-            # TODO [N1-06]: Học viên triển khai lọc sắp hết hàng ở đây
-            # ------------------------------------------------------------------
-            if filters.low_stock_threshold is not None:
-                pass  # Cố ý để trống cho bài tập N1-06
-
-            # ------------------------------------------------------------------
-            # TODO [N5-03]: Học viên triển khai sắp xếp ở đây
-            # ------------------------------------------------------------------
-            if filters.sort_by:
-                pass  # Cố ý để trống cho bài tập N5-03
 
         total = query.count()
         items = query.order_by(Product.id.asc()).offset((page - 1) * page_size).limit(page_size).all()

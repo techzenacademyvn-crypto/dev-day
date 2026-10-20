@@ -8,7 +8,7 @@ class ProductBase(BaseModel):
     category_id: int = Field(..., description="ID danh mục cha")
     name: str = Field(..., min_length=1, max_length=200, description="Tên sản phẩm")
     sku: str = Field(..., min_length=1, max_length=50, description="Mã SKU duy nhất")
-    price: Decimal = Field(..., ge=0, description="Đơn giá (Bẫy Decimal: giá lẻ)")
+    price: Decimal = Field(..., ge=0, description="Đơn giá, 2 số lẻ")
     stock: int = Field(default=0, ge=0, description="Số lượng tồn kho (sửa tay)")
     is_featured: bool = Field(default=False, description="Đánh dấu sản phẩm nổi bật")
     image_url: Optional[str] = None

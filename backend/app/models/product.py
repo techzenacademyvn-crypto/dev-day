@@ -10,8 +10,7 @@ if TYPE_CHECKING:
 
 class Product(Base, TimestampMixin, SoftDeleteMixin):
     """Bảng sản phẩm.
-    Bẫy Decimal: Giá bán price là Numeric(12, 2) có số lẻ (vd: 19.99).
-    Đất bài tập E1: Trường stock sửa tay, chưa có logic nhập/trừ kho.
+    price là Numeric(12, 2), có 2 số lẻ (vd: 19.99). stock là số lượng tồn, sửa tay.
     """
     __tablename__ = "products"
 

@@ -16,12 +16,12 @@ class CategoryService:
         page_size: int = 20,
         filters: Optional[CategoryFilter] = None,
     ) -> Tuple[List[Category], int]:
-        """Lấy danh sách danh mục có phân trang và bộ lọc (Đề mẫu MAU-01).
-        Quy tắc sư phạm: Không bao giờ trả về danh mục đã xóa mềm (deleted_at IS NOT NULL).
+        """Lấy danh sách danh mục có phân trang và bộ lọc.
+        Không trả về danh mục đã xóa mềm (deleted_at khác NULL).
         """
         query = db.query(Category).filter(Category.deleted_at.is_(None))
 
-        # Áp dụng bộ lọc cờ đang hoạt động (Đề mẫu MAU-01)
+        # Lọc theo trạng thái hoạt động
         if filters and filters.is_active is not None:
             query = query.filter(Category.is_active == filters.is_active)
             

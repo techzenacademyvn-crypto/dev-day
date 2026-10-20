@@ -3,19 +3,11 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Quản Lý Sản Phẩm</h1>
-        <p class="page-desc">40 sản phẩm mẫu (Bẫy Decimal giá lẻ, sản phẩm tồn kho 0)</p>
+        <p class="page-desc">Danh sách sản phẩm đang bán</p>
       </div>
       <button @click="openCreateModal" class="btn-primary">+ Thêm Sản Phẩm</button>
     </div>
 
-    <!-- Banner hướng dẫn sư phạm -->
-    <div class="pedagogy-banner">
-      <div class="banner-icon">🎯</div>
-      <div class="banner-content">
-        <strong>Vùng bài tập cá nhân:</strong>
-        Các ô tìm kiếm theo tên [N1-03], lọc theo danh mục [N1-05], và lọc sắp hết hàng [N1-06] đang được cố ý để trống trong mã backend để học viên thực hành!
-      </div>
-    </div>
 
     <!-- Bảng danh sách sản phẩm -->
     <div class="table-container">
@@ -163,21 +155,6 @@ onMounted(() => {
   border-radius: 0.375rem;
   font-weight: 600;
   cursor: pointer;
-}
-.pedagogy-banner {
-  background: rgba(14, 165, 233, 0.1);
-  border: 1px solid #0284c7;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  color: #e0f2fe;
-  font-size: 0.875rem;
-}
-.banner-icon {
-  font-size: 1.5rem;
 }
 .table-container {
   background: #1e293b;

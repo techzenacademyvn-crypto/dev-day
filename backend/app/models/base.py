@@ -26,7 +26,7 @@ class TimestampMixin:
 
 class SoftDeleteMixin:
     """Mixin hỗ trợ xóa mềm (Soft Delete).
-    Bẫy sư phạm: Bản ghi đã xóa mềm có deleted_at IS NOT NULL.
+    Bản ghi đã xóa mềm có deleted_at khác NULL.
     Mặc định các truy vấn nghiệp vụ phải lọc bỏ bản ghi đã xóa.
     """
     deleted_at: Mapped[Optional[datetime]] = mapped_column(

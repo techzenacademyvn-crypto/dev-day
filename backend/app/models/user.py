@@ -10,7 +10,7 @@ class UserRole(str, enum.Enum):
 
 
 class User(Base, TimestampMixin):
-    """Bảng tài khoản nhân viên (Admin & Staff) - Vùng cấm."""
+    """Bảng tài khoản nhân viên (Admin & Staff)."""
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

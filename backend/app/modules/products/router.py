@@ -20,11 +20,11 @@ router = APIRouter(prefix="/products", tags=["3. Sản phẩm (Products)"])
 def list_products(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    search: Optional[str] = Query(default=None, description="Tìm theo tên sản phẩm (N1-03)"),
-    category_id: Optional[int] = Query(default=None, description="Lọc theo danh mục (N1-05)"),
-    low_stock_threshold: Optional[int] = Query(default=None, description="Lọc sắp hết hàng (N1-06)"),
-    is_featured: Optional[bool] = Query(default=None, description="Lọc sản phẩm nổi bật (N2-01)"),
-    sort_by: Optional[str] = Query(default=None, description="Sắp xếp theo giá/tồn (N5-03)"),
+    search: Optional[str] = Query(default=None, description="Tìm theo tên sản phẩm"),
+    category_id: Optional[int] = Query(default=None, description="Lọc theo danh mục"),
+    low_stock_threshold: Optional[int] = Query(default=None, description="Lọc sắp hết hàng"),
+    is_featured: Optional[bool] = Query(default=None, description="Lọc sản phẩm nổi bật"),
+    sort_by: Optional[str] = Query(default=None, description="Sắp xếp theo giá/tồn"),
     db: Session = Depends(get_db),
 ):
     filters = ProductFilter(

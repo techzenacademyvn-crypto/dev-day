@@ -9,7 +9,7 @@ from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryRespons
 from app.schemas.common import ApiResponse, PageResponse
 from app.modules.categories.service import CategoryService
 
-router = APIRouter(prefix="/categories", tags=["2. Danh mục (Categories) - Mẫu chuẩn MAU-01"])
+router = APIRouter(prefix="/categories", tags=["2. Danh mục (Categories)"])
 
 
 @router.get(
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/categories", tags=["2. Danh mục (Categories) - M�
 def list_categories(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    is_active: Optional[bool] = Query(default=None, description="Lọc danh mục đang hoạt động (Đề MAU-01)"),
+    is_active: Optional[bool] = Query(default=None, description="Lọc danh mục đang hoạt động"),
     name: Optional[str] = Query(default=None, description="Tìm kiếm theo tên danh mục"),
     db: Session = Depends(get_db),
 ):

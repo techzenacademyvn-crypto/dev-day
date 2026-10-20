@@ -5,7 +5,6 @@
         <router-link to="/" class="logo">
           <span class="logo-accent">TZ</span> Shop
         </router-link>
-        <span class="badge-env">Ship It With AI</span>
       </div>
 
       <nav class="nav-links">
@@ -78,14 +77,6 @@ function handleLogout() {
 }
 .logo-accent {
   color: #38bdf8;
-}
-.badge-env {
-  font-size: 0.7rem;
-  background: #0284c7;
-  color: #fff;
-  padding: 0.15rem 0.5rem;
-  border-radius: 9999px;
-  font-weight: 600;
 }
 .nav-links {
   display: flex;
