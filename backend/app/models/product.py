@@ -6,6 +6,7 @@ from app.models.base import Base, TimestampMixin, SoftDeleteMixin
 
 if TYPE_CHECKING:
     from app.models.category import Category
+    from app.models.order import OrderItem
 
 
 class Product(Base, TimestampMixin, SoftDeleteMixin):
@@ -25,3 +26,4 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     category: Mapped["Category"] = relationship("Category", back_populates="products")
+    order_items: Mapped[list["OrderItem"]] = relationship("OrderItem", back_populates="product")

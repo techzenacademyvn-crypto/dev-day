@@ -32,6 +32,9 @@ from app.models import (
     UserRole,
     Category,
     Product,
+    Order,
+    OrderItem,
+    OrderStatus,
 )
 
 VN_TZ = timezone(timedelta(hours=7))
@@ -40,6 +43,8 @@ VN_TZ = timezone(timedelta(hours=7))
 def clean_database(db: Session):
     """Xóa sạch dữ liệu các bảng theo đúng thứ tự khóa ngoại."""
     print("[*] Đang làm sạch dữ liệu cũ...")
+    db.query(OrderItem).delete()
+    db.query(Order).delete()
     db.query(Product).delete()
     db.query(Category).delete()
     db.query(User).delete()
@@ -179,12 +184,48 @@ def seed_data(force: bool = False):
             db.add(prod)
         db.flush()
 
+        # 4. Đơn hàng (dữ liệu xác định để học viên làm bài báo cáo)
+        statuses = [
+            OrderStatus.PENDING,
+            OrderStatus.CONFIRMED,
+            OrderStatus.SHIPPING,
+            OrderStatus.COMPLETED,
+            OrderStatus.CANCELLED,
+        ]
+        orders = []
+        now_utc = datetime.now(timezone.utc)
+        for i in range(1, 61):
+            created_at = now_utc - timedelta(days=(60 - i) // 4, hours=i % 12)
+            order = Order(
+                code=f"ORD-{10000 + i}",
+                status=statuses[i % len(statuses)],
+                created_at=created_at,
+                updated_at=created_at,
+            )
+            orders.append(order)
+            db.add(order)
+        db.flush()
+
+        # Mỗi đơn có 1-3 sản phẩm khác nhau, với số lượng lần lượt là 1, 2, 3.
+        for index, order in enumerate(orders):
+            for item_index in range((index % 3) + 1):
+                product = products[(index * 2 + item_index) % len(products)]
+                db.add(
+                    OrderItem(
+                        order_id=order.id,
+                        product_id=product.id,
+                        quantity=item_index + 1,
+                        unit_price=product.price,
+                    )
+                )
+
         db.commit()
         print("\n" + "=" * 60)
         print("[SUCCESS] ĐÃ NẠP THÀNH CÔNG BỘ DỮ LIỆU MẪU:")
         print(f"  - 2 Tài khoản nhân viên: admin@tzshop.vn / staff@tzshop.vn (pass: admin123 / staff123)")
         print(f"  - {len(categories)} Danh mục (hoạt động đầy đủ)")
         print(f"  - {len(products)} Sản phẩm (giá lẻ Decimal, có 2 sản phẩm tồn kho = 0)")
+        print(f"  - {len(orders)} Đơn hàng (có cả trạng thái COMPLETED và CANCELLED)")
         print("=" * 60)
 
     except Exception as e:
