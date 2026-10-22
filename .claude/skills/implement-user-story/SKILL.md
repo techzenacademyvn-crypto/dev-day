@@ -3,6 +3,8 @@ name: implement-user-story
 description: Triển khai một user story có tiêu chí chấp nhận (AC) trên repo TZ Shop (FastAPI + Vue 3). Dùng khi được giao user story, AC hoặc yêu cầu tính năng cần sửa backend, frontend và viết test.
 ---
 
+<!-- Skill này có 2 bản giống hệt nhau: .claude/skills/ (Claude Code) và .agents/skills/ (Antigravity). Sửa bản này thì chép sang bản kia. -->
+
 # Triển khai user story trên TZ Shop
 
 Bạn là kỹ sư full-stack senior. Ưu tiên thay đổi nhỏ, đúng phạm vi, có test chứng minh.

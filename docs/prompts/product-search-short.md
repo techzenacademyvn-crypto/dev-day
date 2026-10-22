@@ -1,4 +1,4 @@
-Dùng skill implement-user-story để triển khai:
+Dùng skill implement-user-story (file `implement-user-story/SKILL.md` trong `.agents/skills/` hoặc `.claude/skills/`) để triển khai:
 
 **User story:** Là người quản lý kho, tôi muốn dễ dàng xem và tìm kiếm để quản lý sản phẩm.
 
