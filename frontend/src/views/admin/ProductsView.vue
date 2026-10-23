@@ -35,20 +35,106 @@
           </div>
         </div>
 
-        <!-- Chọn danh mục -->
-        <div class="filter-item">
+        <!-- Chọn danh mục (Searchable Dropdown) -->
+        <div class="filter-item category-filter-item" ref="categoryDropdownRef">
           <label class="input-label" for="category-select">Danh mục</label>
-          <select
-            id="category-select"
-            v-model="selectedCategoryId"
-            @change="handleFilter"
-            class="form-control select-control"
-          >
-            <option value="">-- Tất cả danh mục --</option>
-            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-              {{ cat.name }}
-            </option>
-          </select>
+          <div class="category-dropdown-wrapper">
+            <button
+              id="category-select"
+              type="button"
+              class="form-control select-control category-select-trigger"
+              :class="{ 'is-open': isCategoryDropdownOpen }"
+              @click="toggleCategoryDropdown"
+              aria-haspopup="listbox"
+              :aria-expanded="isCategoryDropdownOpen"
+            >
+              <span class="trigger-label">
+                {{ selectedCategoryName }}
+              </span>
+              <div class="trigger-icons">
+                <span
+                  v-if="selectedCategoryId !== ''"
+                  class="btn-clear-selection"
+                  title="Bỏ chọn danh mục"
+                  @click="clearCategorySelection($event)"
+                >
+                  ✕
+                </span>
+                <span class="dropdown-chevron" :class="{ 'chevron-rotated': isCategoryDropdownOpen }">▼</span>
+              </div>
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div v-if="isCategoryDropdownOpen" class="category-dropdown-menu">
+              <!-- Search box inside dropdown -->
+              <div class="dropdown-search-wrapper">
+                <span class="dropdown-search-icon">🔍</span>
+                <input
+                  ref="categorySearchInputRef"
+                  type="text"
+                  v-model="categorySearchText"
+                  placeholder="Tìm danh mục..."
+                  class="category-search-input"
+                  @keydown="handleDropdownInputKeydown"
+                  autocomplete="off"
+                />
+                <button
+                  v-if="categorySearchText"
+                  type="button"
+                  class="btn-clear-search"
+                  @click="categorySearchText = ''"
+                  title="Xóa tìm kiếm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <!-- Loading State -->
+              <div v-if="categoriesLoading" class="dropdown-status-box loading-state">
+                <span class="spinner-icon">⏳</span>
+                <span>Đang tải danh mục...</span>
+              </div>
+
+              <!-- Error State -->
+              <div v-else-if="categoriesError" class="dropdown-status-box error-state">
+                <span>⚠️ {{ categoriesError }}</span>
+                <button type="button" @click.stop="fetchCategories" class="btn-retry-category">
+                  Thử lại
+                </button>
+              </div>
+
+              <!-- Empty State -->
+              <div v-else-if="filteredCategories.length === 0" class="dropdown-status-box empty-state">
+                <span>🔍 Không tìm thấy danh mục</span>
+              </div>
+
+              <!-- Danh sách danh mục đã lọc -->
+              <ul v-else class="dropdown-options-list" role="listbox">
+                <li
+                  class="dropdown-option-item"
+                  :class="{ selected: selectedCategoryId === '' }"
+                  @click="selectCategory('')"
+                  role="option"
+                  :aria-selected="selectedCategoryId === ''"
+                >
+                  <span>-- Tất cả danh mục --</span>
+                  <span v-if="selectedCategoryId === ''" class="option-check">✓</span>
+                </li>
+                <li
+                  v-for="cat in filteredCategories"
+                  :key="cat.id"
+                  class="dropdown-option-item"
+                  :class="{ selected: selectedCategoryId === cat.id }"
+                  @click="selectCategory(cat.id)"
+                  role="option"
+                  :aria-selected="selectedCategoryId === cat.id"
+                >
+                  <span class="option-name">{{ cat.name }}</span>
+                  <span v-if="selectedCategoryId === cat.id" class="option-check">✓</span>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <!-- Khoảng giá tối thiểu -->
@@ -313,13 +399,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import api from '../../lib/api';
 import type { Product, Category } from '../../types';
 import StockBadge from '../../components/StockBadge.vue';
 
 const products = ref<Product[]>([]);
 const categories = ref<Category[]>([]);
+const categoriesLoading = ref(false);
+const categoriesError = ref<string | null>(null);
+
+// Dropdown tìm kiếm danh mục
+const isCategoryDropdownOpen = ref(false);
+const categorySearchText = ref('');
+const categoryDropdownRef = ref<HTMLElement | null>(null);
+const categorySearchInputRef = ref<HTMLInputElement | null>(null);
+
 const totalProducts = ref(0);
 const currentPage = ref(1);
 const totalPages = ref(1);
@@ -340,6 +435,80 @@ const isFeaturedSorted = ref(false);
 const searchQuery = ref('');
 const appliedSearch = ref('');
 const selectedCategoryId = ref<number | ''>('');
+
+function removeVietnameseTones(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+}
+
+const filteredCategories = computed(() => {
+  const q = categorySearchText.value.trim();
+  if (!q) return categories.value;
+  const normalizedQuery = removeVietnameseTones(q);
+  return categories.value.filter((cat) => {
+    const rawName = cat.name.toLowerCase();
+    const normalizedName = removeVietnameseTones(cat.name);
+    return rawName.includes(q.toLowerCase()) || normalizedName.includes(normalizedQuery);
+  });
+});
+
+const selectedCategoryName = computed(() => {
+  if (selectedCategoryId.value === '') {
+    return '-- Tất cả danh mục --';
+  }
+  const cat = categories.value.find((c) => c.id === selectedCategoryId.value);
+  return cat ? cat.name : `#${selectedCategoryId.value}`;
+});
+
+function toggleCategoryDropdown() {
+  isCategoryDropdownOpen.value = !isCategoryDropdownOpen.value;
+  if (isCategoryDropdownOpen.value) {
+    nextTick(() => {
+      categorySearchInputRef.value?.focus();
+    });
+  }
+}
+
+function selectCategory(catId: number | '') {
+  selectedCategoryId.value = catId;
+  isCategoryDropdownOpen.value = false;
+  handleFilter();
+}
+
+function clearCategorySelection(event?: MouseEvent) {
+  if (event) {
+    event.stopPropagation();
+  }
+  selectedCategoryId.value = '';
+  categorySearchText.value = '';
+  isCategoryDropdownOpen.value = false;
+  handleFilter();
+}
+
+function handleDropdownInputKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    isCategoryDropdownOpen.value = false;
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (filteredCategories.value.length > 0) {
+      selectCategory(filteredCategories.value[0].id);
+    }
+  }
+}
+
+function handleClickOutside(event: MouseEvent) {
+  if (
+    categoryDropdownRef.value &&
+    !categoryDropdownRef.value.contains(event.target as Node)
+  ) {
+    isCategoryDropdownOpen.value = false;
+  }
+}
 
 // Bộ lọc giá & Sắp xếp
 const minPriceInput = ref<string>('');
@@ -455,6 +624,8 @@ function handleReset() {
   searchQuery.value = '';
   appliedSearch.value = '';
   selectedCategoryId.value = '';
+  categorySearchText.value = '';
+  isCategoryDropdownOpen.value = false;
   minPriceInput.value = '';
   maxPriceInput.value = '';
   appliedMinPrice.value = '';
@@ -480,13 +651,22 @@ function toggleSort(field: 'name' | 'price' | 'stock') {
 }
 
 async function fetchCategories() {
+  categoriesLoading.value = true;
+  categoriesError.value = null;
   try {
     const res = await api.get('/categories', { params: { page: 1, page_size: 100 } });
     if (res.data.success) {
       categories.value = res.data.data.items;
+    } else {
+      categoriesError.value = res.data.message || 'Không thể lấy danh mục.';
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('Lỗi tải danh mục:', err);
+    categoriesError.value =
+      err.response?.data?.error?.message ||
+      'Không thể kết nối để tải danh mục.';
+  } finally {
+    categoriesLoading.value = false;
   }
 }
 
@@ -631,6 +811,11 @@ async function handleDelete(id: number) {
 onMounted(() => {
   fetchCategories();
   fetchProducts();
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
@@ -1124,5 +1309,193 @@ onMounted(() => {
 }
 .btn-cancel:hover {
   background: #475569;
+}
+
+/* Category Searchable Dropdown */
+.category-filter-item {
+  position: relative;
+  min-width: 200px;
+}
+.category-dropdown-wrapper {
+  position: relative;
+  width: 100%;
+}
+.category-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  background: #0f172a;
+  color: #f8fafc;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.55rem 0.85rem;
+}
+.category-select-trigger.is-open {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+}
+.trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 0.5rem;
+}
+.trigger-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.btn-clear-selection {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: all 0.15s;
+}
+.btn-clear-selection:hover {
+  background: #334155;
+  color: #f8fafc;
+}
+.dropdown-chevron {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+.dropdown-chevron.chevron-rotated {
+  transform: rotate(180deg);
+}
+.category-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  min-width: 240px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.375rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  overflow: hidden;
+}
+.dropdown-search-wrapper {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.65rem;
+  background: #0f172a;
+  border-bottom: 1px solid #334155;
+  gap: 0.4rem;
+}
+.dropdown-search-icon {
+  font-size: 0.8rem;
+  color: #64748b;
+  flex-shrink: 0;
+}
+.category-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f8fafc;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+}
+.category-search-input::placeholder {
+  color: #64748b;
+}
+.btn-clear-search {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.btn-clear-search:hover {
+  color: #f8fafc;
+}
+.dropdown-status-box {
+  padding: 1rem 0.85rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.dropdown-status-box.loading-state {
+  color: #38bdf8;
+}
+.dropdown-status-box.error-state {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.08);
+}
+.btn-retry-category {
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.btn-retry-category:hover {
+  background: #475569;
+}
+.dropdown-options-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.dropdown-options-list::-webkit-scrollbar {
+  width: 6px;
+}
+.dropdown-options-list::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+.dropdown-options-list::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 3px;
+}
+.dropdown-options-list::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+.dropdown-option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.dropdown-option-item:hover {
+  background: #334155;
+  color: #f8fafc;
+}
+.dropdown-option-item.selected {
+  background: rgba(2, 132, 199, 0.18);
+  color: #38bdf8;
+  font-weight: 600;
+}
+.option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.option-check {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #38bdf8;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
 }
 </style>
