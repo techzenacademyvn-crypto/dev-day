@@ -129,3 +129,46 @@ def test_reject_invalid_stock_type():
         headers=headers,
     )
     assert res_invalid.status_code == 422
+
+
+def test_stock_timestamps_tracking():
+    """Kiểm tra ghi nhận thời điểm bổ sung hàng (restocked_at) và hết hàng (out_of_stock_at)."""
+    token = get_admin_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    list_res = client.get("/api/v1/products?page=1&page_size=1")
+    assert list_res.status_code == 200
+    prod = list_res.json()["data"]["items"][0]
+    prod_id = prod["id"]
+    original_stock = prod["stock"]
+
+    try:
+        # 1. Đặt tồn kho về 0 -> kiểm tra out_of_stock_at được cập nhật
+        res_zero = client.put(
+            f"/api/v1/products/{prod_id}",
+            json={"stock": 0},
+            headers=headers,
+        )
+        assert res_zero.status_code == 200
+        data_zero = res_zero.json()["data"]
+        assert data_zero["stock"] == 0
+        assert data_zero["out_of_stock_at"] is not None
+
+        # 2. Bổ sung tồn kho lên 25 (tăng số lượng) -> kiểm tra restocked_at được cập nhật
+        res_restock = client.put(
+            f"/api/v1/products/{prod_id}",
+            json={"stock": 25},
+            headers=headers,
+        )
+        assert res_restock.status_code == 200
+        data_restock = res_restock.json()["data"]
+        assert data_restock["stock"] == 25
+        assert data_restock["restocked_at"] is not None
+
+    finally:
+        client.put(
+            f"/api/v1/products/{prod_id}",
+            json={"stock": original_stock},
+            headers=headers,
+        )
+

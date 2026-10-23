@@ -1,6 +1,7 @@
 from decimal import Decimal
+from datetime import datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import String, Numeric, Integer, Boolean, Text, ForeignKey
+from sqlalchemy import String, Numeric, Integer, Boolean, Text, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin, SoftDeleteMixin
 
@@ -24,6 +25,9 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    restocked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    out_of_stock_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    last_stock_action: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
 
     category: Mapped["Category"] = relationship("Category", back_populates="products")
     order_items: Mapped[list["OrderItem"]] = relationship("OrderItem", back_populates="product")
