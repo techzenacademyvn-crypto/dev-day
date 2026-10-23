@@ -8,6 +8,21 @@
       <button @click="openCreateModal" class="btn-primary">+ Thêm Sản Phẩm</button>
     </div>
 
+    <!-- Thanh bộ lọc sản phẩm nổi bật -->
+    <div class="filter-bar flex items-center justify-between mb-4 bg-slate-800/60 p-3 rounded-lg border border-slate-700">
+      <label class="toggle-featured flex items-center gap-2.5 text-sm font-medium text-slate-200 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          v-model="isFeaturedOnly"
+          @change="handleFilterChange"
+          class="w-4 h-4 text-sky-600 bg-slate-700 border-slate-500 rounded focus:ring-sky-500 cursor-pointer accent-sky-500"
+        />
+        <span>⭐ Chỉ hiển thị sản phẩm nổi bật</span>
+      </label>
+      <span v-if="isFeaturedOnly" class="text-xs text-amber-400 font-semibold bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+        Đang lọc nổi bật
+      </span>
+    </div>
 
     <!-- Bảng danh sách sản phẩm -->
     <div class="table-container">
@@ -82,14 +97,17 @@ const totalProducts = ref(0);
 const currentPage = ref(1);
 const totalPages = ref(1);
 const loading = ref(false);
+const isFeaturedOnly = ref(false);
 
 async function fetchProducts(page = 1) {
   loading.value = true;
   currentPage.value = page;
   try {
-    const res = await api.get('/products', {
-      params: { page, page_size: 20 },
-    });
+    const params: Record<string, any> = { page, page_size: 20 };
+    if (isFeaturedOnly.value) {
+      params.is_featured = true;
+    }
+    const res = await api.get('/products/featured', { params });
     if (res.data.success) {
       products.value = res.data.data.items;
       totalProducts.value = res.data.data.total;
@@ -100,6 +118,11 @@ async function fetchProducts(page = 1) {
   } finally {
     loading.value = false;
   }
+}
+
+function handleFilterChange() {
+  currentPage.value = 1;
+  fetchProducts(1);
 }
 
 function changePage(page: number) {
@@ -137,6 +160,31 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+}
+.filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+}
+.toggle-featured {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-featured input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: #0284c7;
+  cursor: pointer;
 }
 .page-title {
   font-size: 1.75rem;
