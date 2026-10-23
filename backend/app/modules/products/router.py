@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
@@ -21,6 +22,8 @@ def list_products(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     search: Optional[str] = Query(default=None, description="Tìm theo tên sản phẩm"),
+    min_price: Optional[Decimal] = Query(default=None, ge=0, description="Giá tối thiểu"),
+    max_price: Optional[Decimal] = Query(default=None, ge=0, description="Giá tối đa"),
     category_id: Optional[int] = Query(default=None, description="Lọc theo danh mục"),
     low_stock_threshold: Optional[int] = Query(default=None, description="Lọc sắp hết hàng"),
     is_featured: Optional[bool] = Query(default=None, description="Lọc sản phẩm nổi bật"),
@@ -29,6 +32,8 @@ def list_products(
 ):
     filters = ProductFilter(
         search=search,
+        min_price=min_price,
+        max_price=max_price,
         category_id=category_id,
         low_stock_threshold=low_stock_threshold,
         is_featured=is_featured,
