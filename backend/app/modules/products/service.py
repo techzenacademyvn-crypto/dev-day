@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, Tuple, List
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from app.models.product import Product
@@ -15,11 +16,56 @@ class ProductService:
         page_size: int = 20,
         filters: Optional[ProductFilter] = None,
     ) -> Tuple[List[Product], int]:
-        """Lấy danh sách sản phẩm, 20 sản phẩm mỗi trang."""
+        """Lấy danh sách sản phẩm có phân trang và bộ lọc."""
         query = db.query(Product).filter(Product.deleted_at.is_(None))
 
+        if filters:
+            # 1. Tìm kiếm theo tên
+            if filters.search and filters.search.strip():
+                term = f"%{filters.search.strip()}%"
+                query = query.filter(
+                    or_(
+                        Product.name.ilike(term),
+                        func.unaccent(Product.name).ilike(func.unaccent(term)),
+                    )
+                )
+            # 2. Lọc theo danh mục
+            if filters.category_id is not None:
+                query = query.filter(Product.category_id == filters.category_id)
+            # 3. Lọc theo khoảng giá
+            if filters.min_price is not None:
+                query = query.filter(Product.price >= filters.min_price)
+            if filters.max_price is not None:
+                query = query.filter(Product.price <= filters.max_price)
+            # 4. Lọc sắp hết hàng
+            if filters.low_stock_threshold is not None:
+                query = query.filter(Product.stock <= filters.low_stock_threshold)
+            # 5. Lọc nổi bật
+            if filters.is_featured is not None:
+                query = query.filter(Product.is_featured == filters.is_featured)
+
         total = query.count()
-        items = query.order_by(Product.id.asc()).offset((page - 1) * page_size).limit(page_size).all()
+
+        # Xử lý sắp xếp đầy đủ (Tên, Đơn giá, Tồn kho)
+        if filters and filters.sort_by:
+            if filters.sort_by == "name_asc":
+                query = query.order_by(Product.name.asc(), Product.id.asc())
+            elif filters.sort_by == "name_desc":
+                query = query.order_by(Product.name.desc(), Product.id.asc())
+            elif filters.sort_by == "price_asc":
+                query = query.order_by(Product.price.asc(), Product.id.asc())
+            elif filters.sort_by == "price_desc":
+                query = query.order_by(Product.price.desc(), Product.id.asc())
+            elif filters.sort_by == "stock_asc":
+                query = query.order_by(Product.stock.asc(), Product.id.asc())
+            elif filters.sort_by == "stock_desc":
+                query = query.order_by(Product.stock.desc(), Product.id.asc())
+            else:
+                query = query.order_by(Product.id.asc())
+        else:
+            query = query.order_by(Product.id.asc())
+
+        items = query.offset((page - 1) * page_size).limit(page_size).all()
         return items, total
 
     @staticmethod
