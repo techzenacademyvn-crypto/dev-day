@@ -8,6 +8,16 @@
       <button @click="openCreateModal" class="btn-primary">+ Thêm Sản Phẩm</button>
     </div>
 
+<<<<<<< HEAD
+    <!-- Bộ lọc khoảng giá (Task US1-FE02: Dual-thumb Slider & Quick Price Chips) -->
+    <PriceFilter
+      ref="priceFilterRef"
+      v-model="priceRange"
+      :min="0"
+      :max="2000000"
+      :step="10000"
+    />
+=======
     <!-- Thanh tìm kiếm thông minh & bộ lọc danh mục Tree Select -->
     <ProductSearchFilters
       :initial-search="searchKeyword"
@@ -23,6 +33,7 @@
       <span>{{ errorMessage }}</span>
       <button @click="fetchProducts(currentPage)" class="btn-retry">Thử lại</button>
     </div>
+>>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 
     <!-- Bảng danh sách sản phẩm -->
     <div class="table-container">
@@ -46,6 +57,16 @@
               <span>Đang tải danh sách sản phẩm...</span>
             </td>
           </tr>
+<<<<<<< HEAD
+          <!-- Thông báo khi không có sản phẩm nào trong khoảng giá -->
+          <tr v-else-if="filteredProducts.length === 0">
+            <td colspan="7" class="empty-table-cell">
+              <div class="empty-filter-box">
+                <span class="empty-icon">🏷️</span>
+                <p class="empty-msg">Không tìm thấy sản phẩm nào trong khoảng giá này</p>
+                <button @click="resetPriceFilter" class="btn-reset-inline">
+                  🔄 Đặt lại tất cả mức giá
+=======
 
           <!-- Empty State -->
           <tr v-else-if="products.length === 0">
@@ -62,10 +83,21 @@
                   class="btn-reset-empty"
                 >
                   Xóa bộ lọc
+>>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
                 </button>
               </div>
             </td>
           </tr>
+<<<<<<< HEAD
+          <tr v-for="prod in filteredProducts" :key="prod.id">
+            <td><code>{{ prod.sku }}</code></td>
+            <td class="font-medium">{{ prod.name }}</td>
+            <td>#{{ prod.category_id }}</td>
+            <td class="price-tag">
+              <div class="price-vnd-text">{{ formatVND(getProductPriceVND(prod.price)) }}</div>
+              <div class="price-usd-sub">${{ Number(prod.price).toFixed(2) }}</div>
+            </td>
+=======
 
           <!-- Data Rows -->
           <tr v-for="prod in products" :key="prod.id">
@@ -77,6 +109,7 @@
               </span>
             </td>
             <td class="price-tag">${{ Number(prod.price).toFixed(2) }}</td>
+>>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
             <td>
               <span :class="['stock-badge', prod.stock === 0 ? 'out-of-stock' : 'in-stock']">
                 {{ prod.stock }} {{ prod.stock === 0 ? '(Hết hàng)' : 'cái' }}
@@ -94,9 +127,17 @@
       </table>
     </div>
 
+<<<<<<< HEAD
+    <!-- Phân trang / Thống kê -->
+    <div class="pagination-bar">
+      <span>
+        Hiển thị <strong>{{ filteredProducts.length }}</strong> / {{ totalProducts }} sản phẩm (Trang {{ currentPage }} / {{ totalPages }})
+      </span>
+=======
     <!-- Phân trang (giữ nguyên bộ lọc khi chuyển trang) -->
     <div class="pagination-bar" v-if="totalProducts > 0">
       <span>Trang {{ currentPage }} / {{ totalPages }} (Tổng cộng {{ totalProducts }} sản phẩm)</span>
+>>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
       <div class="pagination-btns">
         <button
           :disabled="currentPage <= 1 || loading"
@@ -118,10 +159,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import api from '../../lib/api';
 import type { Product } from '../../types';
+<<<<<<< HEAD
+import PriceFilter from '../../components/PriceFilter.vue';
+import { getProductPriceVND, formatVND } from '../../utils/format';
+=======
 import ProductSearchFilters from '../../components/admin/ProductSearchFilters.vue';
+>>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 
 const products = ref<Product[]>([]);
 const totalProducts = ref(0);
@@ -155,12 +201,37 @@ async function fetchCategoriesMap() {
   }
 }
 
+const priceFilterRef = ref<InstanceType<typeof PriceFilter> | null>(null);
+const priceRange = ref<[number, number]>([0, 2000000]);
+
+// Lọc sản phẩm hiển thị theo khoảng giá đã chọn
+const filteredProducts = computed(() => {
+  const [minPrice, maxPrice] = priceRange.value;
+  return products.value.filter((prod) => {
+    const vndPrice = getProductPriceVND(prod.price);
+    return vndPrice >= minPrice && vndPrice <= maxPrice;
+  });
+});
+
+function resetPriceFilter() {
+  if (priceFilterRef.value) {
+    priceFilterRef.value.reset();
+  } else {
+    priceRange.value = [0, 2000000];
+  }
+}
+
 async function fetchProducts(page = 1) {
   loading.value = true;
   errorMessage.value = '';
   currentPage.value = page;
 
   try {
+<<<<<<< HEAD
+    const res = await api.get('/products', {
+      params: { page, page_size: 50 },
+    });
+=======
     const params: Record<string, any> = {
       page,
       page_size: 20,
@@ -174,6 +245,7 @@ async function fetchProducts(page = 1) {
     }
 
     const res = await api.get('/products', { params });
+>>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
     if (res.data.success) {
       products.value = res.data.data.items;
       totalProducts.value = res.data.data.total;
@@ -328,6 +400,8 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
+<<<<<<< HEAD
+=======
 .category-tag {
   display: inline-block;
   background: rgba(56, 189, 248, 0.1);
@@ -339,10 +413,58 @@ onMounted(() => {
   font-weight: 500;
 }
 
+>>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 .price-tag {
   color: #38bdf8;
   font-weight: 600;
 }
+<<<<<<< HEAD
+.price-vnd-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+.price-usd-sub {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.empty-table-cell {
+  padding: 3.5rem 1rem !important;
+  text-align: center;
+}
+.empty-filter-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+.empty-icon {
+  font-size: 2.5rem;
+}
+.empty-msg {
+  color: #f87171;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.btn-reset-inline {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-reset-inline:hover {
+  background: #0369a1;
+}
+=======
+>>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 
 .stock-badge {
   font-size: 0.8rem;
@@ -459,7 +581,14 @@ onMounted(() => {
   color: #94a3b8;
   font-size: 0.85rem;
 }
+<<<<<<< HEAD
+.pagination-bar strong {
+  color: #38bdf8;
+  font-size: 1rem;
+}
+=======
 
+>>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 .pagination-btns {
   display: flex;
   gap: 0.5rem;
