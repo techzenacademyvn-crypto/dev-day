@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate, ProductFilter
 from app.core.exceptions import NotFoundException, BadRequestException
+from app.modules.products.search import build_search_expressions
 
 
 class ProductService:
@@ -16,24 +17,28 @@ class ProductService:
         page_size: int = 20,
         filters: Optional[ProductFilter] = None,
     ) -> Tuple[List[Product], int]:
-        """Lấy danh sách sản phẩm, 20 sản phẩm mỗi trang."""
+        """Lấy danh sách sản phẩm có bộ lọc và tìm kiếm thông minh."""
         query = db.query(Product).filter(Product.deleted_at.is_(None))
+        ranking_score = None
 
         if filters:
+            # Lọc theo danh mục đã chọn (kết hợp bằng AND)
             if filters.category_id is not None:
                 query = query.filter(Product.category_id == filters.category_id)
-            if filters.search:
-                pattern = f"%{filters.search.strip()}%"
-                query = query.filter(
-                    or_(
-                        Product.name.ilike(pattern),
-                        Product.sku.ilike(pattern),
-                    )
-                )
+
+            # Lọc sản phẩm nổi bật
             if filters.is_featured is not None:
                 query = query.filter(Product.is_featured == filters.is_featured)
+
+            # Lọc tồn kho thấp
             if filters.low_stock_threshold is not None:
                 query = query.filter(Product.stock <= filters.low_stock_threshold)
+
+            # Tìm kiếm thông minh (Smart Search)
+            if filters.search and filters.search.strip():
+                search_filter, ranking_score = build_search_expressions(db, filters.search)
+                if search_filter is not None:
+                    query = query.filter(search_filter)
 
             # Lọc theo tình trạng tồn kho:
             # - out_of_stock: stock == 0
@@ -61,21 +66,22 @@ class ProductService:
                         )
                     )
 
-            if filters.sort_by:
-                if filters.sort_by == "price_asc":
-                    query = query.order_by(Product.price.asc(), Product.id.asc())
-                elif filters.sort_by == "price_desc":
-                    query = query.order_by(Product.price.desc(), Product.id.asc())
-                elif filters.sort_by == "stock_asc":
-                    query = query.order_by(Product.stock.asc(), Product.id.asc())
-                elif filters.sort_by == "stock_desc":
-                    query = query.order_by(Product.stock.desc(), Product.id.asc())
-            else:
-                query = query.order_by(Product.id.asc())
+        total = query.count()
+
+        # Sắp xếp: ưu tiên theo sort_by nếu có, tiếp theo là ranking_score, cuối cùng là id
+        if filters and filters.sort_by == "price_asc":
+            query = query.order_by(Product.price.asc(), Product.id.asc())
+        elif filters and filters.sort_by == "price_desc":
+            query = query.order_by(Product.price.desc(), Product.id.asc())
+        elif filters and filters.sort_by == "stock_asc":
+            query = query.order_by(Product.stock.asc(), Product.id.asc())
+        elif filters and filters.sort_by == "stock_desc":
+            query = query.order_by(Product.stock.desc(), Product.id.asc())
+        elif ranking_score is not None:
+            query = query.order_by(ranking_score.desc(), Product.id.asc())
         else:
             query = query.order_by(Product.id.asc())
 
-        total = query.count()
         items = query.offset((page - 1) * page_size).limit(page_size).all()
         return items, total
 

@@ -660,6 +660,24 @@ onMounted(() => {
   background: #0369a1;
 }
 
+.btn-reset-empty {
+  background: #1e293b;
+  color: #38bdf8;
+  border: 1px solid #334155;
+  padding: 0.45rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 0.5rem;
+}
+
+.btn-reset-empty:hover {
+  background: #334155;
+  border-color: #38bdf8;
+}
+
 .spinner {
   display: inline-block;
   width: 28px;
