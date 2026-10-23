@@ -9,7 +9,7 @@
 
     <div class="container">
       <div class="catalog-header">
-        <h2>Danh Sách Sản Phẩm Mẫu</h2>
+        <h2>Sản Phẩm Nổi Bật</h2>
         <span class="product-count">Hiển thị {{ products.length }} sản phẩm</span>
       </div>
 
@@ -34,10 +34,8 @@
             <div class="card-footer">
               <div class="price-box">
                 <span class="price">${{ Number(prod.price).toFixed(2) }}</span>
-                <span :class="['stock-text', prod.stock === 0 ? 'text-danger' : '']">
-                  {{ prod.stock === 0 ? 'Hết hàng' : 'Còn ' + prod.stock }}
-                </span>
               </div>
+              <StockBadge :stock="prod.stock" />
             </div>
           </div>
         </div>
@@ -50,6 +48,7 @@
 import { ref, onMounted } from 'vue';
 import api from '../../lib/api';
 import type { Product } from '../../types';
+import StockBadge from '../../components/StockBadge.vue';
 
 const products = ref<Product[]>([]);
 const loading = ref(false);
