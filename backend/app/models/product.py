@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import datetime, timezone, timedelta
 from typing import TYPE_CHECKING
 from sqlalchemy import String, Numeric, Integer, Boolean, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,3 +28,35 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
 
     category: Mapped["Category"] = relationship("Category", back_populates="products")
     order_items: Mapped[list["OrderItem"]] = relationship("OrderItem", back_populates="product")
+
+    @property
+    def days_in_stock(self) -> int:
+        """Số ngày sản phẩm đã lưu trong kho theo chuẩn UTC."""
+        if not self.created_at:
+            return 0
+        now = datetime.now(timezone.utc)
+        created = self.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        return max(0, (now - created).days)
+
+    @property
+    def stock_status(self) -> str:
+        """Phân loại tình trạng tồn kho:
+        - out_of_stock: Hết hàng (stock == 0)
+        - overstocked: Tồn kho (> 2 tháng tức 60 ngày VÀ có nhiều hơn 10 sản phẩm)
+        - normal: Tồn kho bình thường
+        """
+        if self.stock == 0:
+            return "out_of_stock"
+
+        now = datetime.now(timezone.utc)
+        created = self.created_at
+        if created:
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            # Tiêu chí: ở trong kho > 2 tháng (60 ngày) VÀ nhiều hơn 10 sản phẩm
+            if (now - created) > timedelta(days=60) and self.stock > 10:
+                return "overstocked"
+
+        return "normal"

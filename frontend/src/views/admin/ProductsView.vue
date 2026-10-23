@@ -15,7 +15,7 @@
       @filter="handleFilterChange"
     />
 
-    <!-- Task 2 (Công): Bộ lọc khoảng giá (Dual Slider & Quick Price Chips) -->
+    <!-- Task 2 (Công): Bộ lọc khoảng giá (Dual-thumb Slider & Quick Price Chips) -->
     <PriceFilter
       ref="priceFilterRef"
       v-model="priceRange"
@@ -23,6 +23,59 @@
       :max="2000000"
       :step="10000"
     />
+
+    <!-- Task 3 (Hoài): Bộ lọc sản phẩm nổi bật -->
+    <div class="featured-filter-bar">
+      <label class="featured-toggle-label" for="toggle-featured">
+        <div
+          id="toggle-featured"
+          class="toggle-switch"
+          :class="{ active: isFeaturedOnly }"
+          role="switch"
+          :aria-checked="isFeaturedOnly"
+          tabindex="0"
+          @click="toggleFeatured"
+          @keydown.enter="toggleFeatured"
+          @keydown.space.prevent="toggleFeatured"
+        >
+          <div class="toggle-thumb"></div>
+        </div>
+        <span class="toggle-text">
+          <span v-if="isFeaturedOnly" class="toggle-active-text">⭐ Chỉ sản phẩm nổi bật</span>
+          <span v-else>Chỉ hiển thị sản phẩm nổi bật</span>
+        </span>
+      </label>
+    </div>
+
+    <!-- Task 4 (Quân): Bộ lọc nhanh tình trạng tồn kho -->
+    <div class="stock-filter-bar">
+      <div class="stock-tabs">
+        <button
+          :class="['tab-btn', selectedStockTab === 'all' ? 'active' : '']"
+          @click="changeStockTab('all')"
+        >
+          Tất cả ({{ stockCounts.all }})
+        </button>
+        <button
+          :class="['tab-btn tab-danger', selectedStockTab === 'out_of_stock' ? 'active' : '']"
+          @click="changeStockTab('out_of_stock')"
+        >
+          🔴 Hết hàng ({{ stockCounts.out_of_stock }})
+        </button>
+        <button
+          :class="['tab-btn tab-warning', selectedStockTab === 'overstocked' ? 'active' : '']"
+          @click="changeStockTab('overstocked')"
+        >
+          🟡 Tồn kho > 2 tháng ({{ stockCounts.overstocked }})
+        </button>
+        <button
+          :class="['tab-btn tab-success', selectedStockTab === 'normal' ? 'active' : '']"
+          @click="changeStockTab('normal')"
+        >
+          🟢 Bình thường ({{ stockCounts.normal }})
+        </button>
+      </div>
+    </div>
 
     <!-- Task 5 (Ngọc): Thanh công cụ Gom nhóm & Sắp xếp kiểm kê -->
     <div class="view-controls-bar">
@@ -52,7 +105,7 @@
       </div>
     </div>
 
-    <!-- Trạng thái lỗi nếu có -->
+    <!-- Trạng thái thông báo lỗi nếu có -->
     <div v-if="errorMessage" class="error-banner">
       <svg class="error-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
@@ -85,7 +138,7 @@
             </td>
           </tr>
 
-          <!-- Trạng thái Không có sản phẩm nào sau khi lọc giá hoặc tìm kiếm -->
+          <!-- Trạng thái Không có sản phẩm nào sau khi lọc -->
           <tr v-else-if="filteredProducts.length === 0">
             <td colspan="8" class="empty-table-cell">
               <div class="empty-filter-box">
@@ -95,12 +148,8 @@
                   <button @click="resetPriceFilter" class="btn-reset-inline">
                     🔄 Đặt lại giá
                   </button>
-                  <button
-                    v-if="searchKeyword || selectedCategoryId !== null"
-                    @click="resetFilters"
-                    class="btn-reset-empty"
-                  >
-                    Xóa từ khóa & danh mục
+                  <button @click="resetAllFilters" class="btn-reset-empty">
+                    Xóa tất cả bộ lọc
                   </button>
                 </div>
               </div>
@@ -211,18 +260,22 @@ const selectedCategoryId = ref<number | null>(null);
 const priceFilterRef = ref<InstanceType<typeof PriceFilter> | null>(null);
 const priceRange = ref<[number, number]>([0, 2000000]);
 
+// State Task 3: Sản phẩm nổi bật (Hoài)
+const isFeaturedOnly = ref(false);
+
+// State Task 4: Tình trạng tồn kho (Quân)
+type StockFilterType = 'all' | 'out_of_stock' | 'overstocked' | 'normal';
+const selectedStockTab = ref<StockFilterType>('all');
+
 // State Task 5: Gom nhóm & Sắp xếp (Ngọc)
 const groupBy = ref<'none' | 'category' | 'stock_status'>('none');
 const sortBy = ref('');
 
-// Hàm kiểm tra tình trạng tồn kho theo tiêu chuẩn nghiệp vụ US1:
-// 1. Hết hàng: stock == 0
-// 2. Tồn đọng lâu ngày: stock > 10 và nhập kho quá 2 tháng (>= 60 ngày)
-// 3. Bình thường: các trường hợp còn lại
+// Hàm tính ngày lưu kho và phân loại tình trạng tồn kho theo chuẩn nghiệp vụ US1:
 function getStockStatus(prod: Product) {
   if (prod.stock === 0) {
     return {
-      type: 'out_of_stock',
+      key: 'out_of_stock',
       label: 'Hết hàng',
       badgeClass: 'badge-out-of-stock',
     };
@@ -234,7 +287,7 @@ function getStockStatus(prod: Product) {
     const sixtyDaysMs = 60 * 24 * 60 * 60 * 1000;
     if (now - createdTime >= sixtyDaysMs) {
       return {
-        type: 'overstocked',
+        key: 'overstocked',
         label: 'Tồn kho > 2 tháng',
         badgeClass: 'badge-overstocked',
       };
@@ -242,18 +295,41 @@ function getStockStatus(prod: Product) {
   }
 
   return {
-    type: 'in_stock',
+    key: 'normal',
     label: 'Còn hàng',
     badgeClass: 'badge-in-stock',
   };
 }
 
+// Đếm số lượng sản phẩm theo từng tab tồn kho (Task 4)
+const stockCounts = computed(() => {
+  const counts = { all: 0, out_of_stock: 0, overstocked: 0, normal: 0 };
+  for (const prod of products.value) {
+    counts.all++;
+    const status = getStockStatus(prod).key as StockFilterType;
+    if (status in counts) {
+      counts[status]++;
+    }
+  }
+  return counts;
+});
+
 // Lọc sản phẩm hiển thị theo khoảng giá đã chọn (Task 2)
 const filteredProducts = computed(() => {
   const [minPrice, maxPrice] = priceRange.value;
   return products.value.filter((prod) => {
+    // 1. Lọc theo giá (Task 2)
     const vndPrice = getProductPriceVND(prod.price);
-    return vndPrice >= minPrice && vndPrice <= maxPrice;
+    if (vndPrice < minPrice || vndPrice > maxPrice) {
+      return false;
+    }
+    // 2. Lọc theo tab tồn kho nếu đã chọn tab cụ thể (Task 4)
+    if (selectedStockTab.value !== 'all') {
+      if (getStockStatus(prod).key !== selectedStockTab.value) {
+        return false;
+      }
+    }
+    return true;
   });
 });
 
@@ -321,9 +397,9 @@ const groupedProducts = computed<ProductGroup[]>(() => {
 
     for (const prod of list) {
       const status = getStockStatus(prod);
-      if (status.type === 'out_of_stock') {
+      if (status.key === 'out_of_stock') {
         outOfStockItems.push(prod);
-      } else if (status.type === 'overstocked') {
+      } else if (status.key === 'overstocked') {
         overstockedItems.push(prod);
       } else {
         inStockItems.push(prod);
@@ -386,7 +462,7 @@ async function fetchCategoriesMap() {
   }
 }
 
-// Gọi API lấy danh sách sản phẩm có áp dụng Search + Category + Sort (Task 1 & Task 5)
+// Gọi API lấy danh sách sản phẩm
 async function fetchProducts(page = 1) {
   loading.value = true;
   errorMessage.value = '';
@@ -395,7 +471,7 @@ async function fetchProducts(page = 1) {
   try {
     const params: Record<string, any> = {
       page,
-      page_size: 50, // Lấy 50 sản phẩm mỗi trang để gom nhóm trực quan hơn
+      page_size: 50,
     };
 
     if (searchKeyword.value.trim()) {
@@ -403,6 +479,12 @@ async function fetchProducts(page = 1) {
     }
     if (selectedCategoryId.value !== null) {
       params.category_id = selectedCategoryId.value;
+    }
+    if (isFeaturedOnly.value) {
+      params.is_featured = true;
+    }
+    if (selectedStockTab.value !== 'all') {
+      params.stock_status = selectedStockTab.value;
     }
     if (sortBy.value) {
       params.sort_by = sortBy.value;
@@ -424,15 +506,29 @@ async function fetchProducts(page = 1) {
   }
 }
 
-// Xử lý khi đổi tiêu chí sắp xếp (Task 5)
+// Xử lý đổi tiêu chí sắp xếp (Task 5)
 function handleSortChange() {
   fetchProducts(1);
 }
 
-// Xử lý khi bộ lọc Task 1 thay đổi (Search / Category)
+// Xử lý đổi bộ lọc Task 1 (Search / Category)
 function handleFilterChange(payload: { search: string; categoryId: number | null }) {
   searchKeyword.value = payload.search;
   selectedCategoryId.value = payload.categoryId;
+  currentPage.value = 1;
+  fetchProducts(1);
+}
+
+// Xử lý bật/tắt nổi bật (Task 3)
+function toggleFeatured() {
+  isFeaturedOnly.value = !isFeaturedOnly.value;
+  currentPage.value = 1;
+  fetchProducts(1);
+}
+
+// Xử lý đổi tab tồn kho (Task 4)
+function changeStockTab(tab: StockFilterType) {
+  selectedStockTab.value = tab;
   currentPage.value = 1;
   fetchProducts(1);
 }
@@ -451,10 +547,13 @@ function resetPriceFilter() {
   }
 }
 
-// Đặt lại bộ lọc tìm kiếm & danh mục (Task 1)
-function resetFilters() {
+// Đặt lại toàn bộ bộ lọc
+function resetAllFilters() {
   searchKeyword.value = '';
   selectedCategoryId.value = null;
+  selectedStockTab.value = 'all';
+  isFeaturedOnly.value = false;
+  resetPriceFilter();
   currentPage.value = 1;
   fetchProducts(1);
 }
@@ -518,6 +617,111 @@ onMounted(() => {
 
 .btn-primary:hover {
   background: #0369a1;
+}
+
+/* Bộ lọc sản phẩm nổi bật (Task 3) */
+.featured-filter-bar {
+  margin-bottom: 1rem;
+}
+
+.featured-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  background: #334155;
+  border-radius: 9999px;
+  position: relative;
+  transition: background-color 0.25s ease;
+  cursor: pointer;
+}
+
+.toggle-switch.active {
+  background: #facc15;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.25s ease;
+}
+
+.toggle-switch.active .toggle-thumb {
+  transform: translateX(20px);
+}
+
+.toggle-text {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.toggle-active-text {
+  color: #facc15;
+  font-weight: 600;
+}
+
+/* Bộ lọc nhanh tình trạng tồn kho (Task 4) */
+.stock-filter-bar {
+  margin-bottom: 1rem;
+}
+
+.stock-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+  border-color: #64748b;
+  color: #f8fafc;
+}
+
+.tab-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  font-weight: 600;
+}
+
+.tab-btn.tab-danger.active {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.tab-btn.tab-warning.active {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+
+.tab-btn.tab-success.active {
+  background: rgba(34, 197, 94, 0.25);
+  border-color: #22c55e;
+  color: #4ade80;
 }
 
 /* Thanh điều khiển Gom nhóm & Sắp xếp (Task 5) */
@@ -860,6 +1064,11 @@ onMounted(() => {
   padding: 1rem 0;
   color: #94a3b8;
   font-size: 0.875rem;
+}
+
+.pagination-bar strong {
+  color: #38bdf8;
+  font-size: 1rem;
 }
 
 .pagination-btns {

@@ -1,10 +1,12 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple, List
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate, ProductFilter
-from app.core.exceptions import NotFoundException, BadRequestException
+from app.core.exceptions import NotFoundException, BadRequestException, AppException
 from app.modules.products.search import build_search_expressions
 
 
@@ -21,44 +23,101 @@ class ProductService:
         ranking_score = None
 
         if filters:
-            # Lọc theo danh mục đã chọn (kết hợp bằng AND)
             if filters.category_id is not None:
                 query = query.filter(Product.category_id == filters.category_id)
-
-            # Lọc sản phẩm nổi bật
-            if filters.is_featured is not None:
-                query = query.filter(Product.is_featured == filters.is_featured)
-
-            # Lọc tồn kho thấp
-            if filters.low_stock_threshold is not None:
-                query = query.filter(Product.stock <= filters.low_stock_threshold)
-
-            # Tìm kiếm thông minh (Smart Search)
             if filters.search and filters.search.strip():
                 search_filter, ranking_score = build_search_expressions(db, filters.search)
                 if search_filter is not None:
                     query = query.filter(search_filter)
+            if filters.is_featured is not None:
+                query = query.filter(Product.is_featured == filters.is_featured)
+            if filters.low_stock_threshold is not None:
+                query = query.filter(Product.stock <= filters.low_stock_threshold)
 
-        total = query.count()
+            # Lọc theo tình trạng tồn kho:
+            # - out_of_stock: stock == 0
+            # - overstocked: lưu kho > 2 tháng (60 ngày) VÀ stock > 10
+            # - normal: các trường hợp còn lại
+            if filters.stock_status:
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=60)
+                if filters.stock_status == "out_of_stock":
+                    query = query.filter(Product.stock == 0)
+                elif filters.stock_status == "overstocked":
+                    query = query.filter(
+                        and_(
+                            Product.created_at <= cutoff_date,
+                            Product.stock > 10,
+                        )
+                    )
+                elif filters.stock_status == "normal":
+                    query = query.filter(
+                        and_(
+                            Product.stock > 0,
+                            or_(
+                                Product.created_at > cutoff_date,
+                                Product.stock <= 10,
+                            ),
+                        )
+                    )
 
-        # Sắp xếp: ưu tiên theo sort_by nếu có, tiếp theo là ranking_score, cuối cùng là id
-        if filters and filters.sort_by == "price_asc":
-            query = query.order_by(Product.price.asc(), Product.id.asc())
-        elif filters and filters.sort_by == "price_desc":
-            query = query.order_by(Product.price.desc(), Product.id.asc())
-        elif filters and filters.sort_by == "stock_asc":
-            query = query.order_by(Product.stock.asc(), Product.id.asc())
-        elif filters and filters.sort_by == "stock_desc":
-            query = query.order_by(Product.stock.desc(), Product.id.asc())
-        elif filters and filters.sort_by == "category":
-            query = query.order_by(Product.category_id.asc(), Product.id.asc())
-        elif ranking_score is not None:
-            query = query.order_by(ranking_score.desc(), Product.id.asc())
+            # Sắp xếp: ưu tiên theo sort_by nếu có, tiếp theo là ranking_score, cuối cùng là id
+            if filters.sort_by == "price_asc":
+                query = query.order_by(Product.price.asc(), Product.id.asc())
+            elif filters.sort_by == "price_desc":
+                query = query.order_by(Product.price.desc(), Product.id.asc())
+            elif filters.sort_by == "stock_asc":
+                query = query.order_by(Product.stock.asc(), Product.id.asc())
+            elif filters.sort_by == "stock_desc":
+                query = query.order_by(Product.stock.desc(), Product.id.asc())
+            elif filters.sort_by == "category":
+                query = query.order_by(Product.category_id.asc(), Product.id.asc())
+            elif ranking_score is not None:
+                query = query.order_by(ranking_score.desc(), Product.id.asc())
+            else:
+                query = query.order_by(Product.id.asc())
         else:
             query = query.order_by(Product.id.asc())
 
+        total = query.count()
         items = query.offset((page - 1) * page_size).limit(page_size).all()
         return items, total
+
+    @staticmethod
+    def get_featured_list(
+        db: Session,
+        page: int = 1,
+        page_size: int = 20,
+        is_featured: Optional[bool] = None,
+    ) -> Tuple[List[Product], int]:
+        """Lấy danh sách sản phẩm theo sản phẩm nổi bật với phân trang."""
+        try:
+            query = db.query(Product).filter(Product.deleted_at.is_(None))
+
+            if is_featured is not None:
+                query = query.filter(Product.is_featured == is_featured)
+
+            total = query.count()
+            items = (
+                query.order_by(Product.id.asc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+                .all()
+            )
+            return items, total
+        except AppException:
+            raise
+        except SQLAlchemyError as exc:
+            raise AppException(
+                message="Lỗi truy vấn cơ sở dữ liệu khi lấy danh sách sản phẩm nổi bật",
+                status_code=500,
+                details=str(exc),
+            )
+        except Exception as exc:
+            raise AppException(
+                message="Đã xảy ra lỗi không xác định khi lấy danh sách sản phẩm nổi bật",
+                status_code=500,
+                details=str(exc),
+            )
 
     @staticmethod
     def get_by_id(db: Session, product_id: int) -> Product:
