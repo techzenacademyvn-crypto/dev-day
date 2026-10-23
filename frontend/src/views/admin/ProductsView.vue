@@ -77,31 +77,144 @@
       </div>
     </div>
 
-    <!-- Task 5 (Ngọc): Thanh công cụ Gom nhóm & Sắp xếp kiểm kê -->
+    <!-- Thanh công cụ Điều khiển: Gom nhóm (US1-Task 5) & Bố cục hiển thị theo mức độ cần thiết (US2-Task 4) -->
     <div class="view-controls-bar">
+      <!-- US1-Task 5: Gom nhóm theo khối -->
       <div class="control-box group-control">
         <label for="group-mode-select" class="control-label">
-          <span class="control-icon">📂</span> Chế độ gom nhóm:
+          <span class="control-icon">📂</span> Gom nhóm:
         </label>
         <select id="group-mode-select" v-model="groupBy" class="control-select">
-          <option value="none">Mặc định (Bảng phẳng không gom nhóm)</option>
-          <option value="category">📁 Gom theo Danh mục sản phẩm</option>
-          <option value="stock_status">📊 Gom theo Tình trạng kho (Tồn > 2 tháng & > 10sp / Hết hàng)</option>
+          <option value="none">Mặc định (Bảng phẳng)</option>
+          <option value="category">📁 Theo Danh mục</option>
+          <option value="stock_status">📊 Theo Tình trạng kho</option>
         </select>
       </div>
 
+      <!-- US1-Task 5: Sắp xếp thứ tự -->
       <div class="control-box sort-control">
         <label for="sort-select" class="control-label">
-          <span class="control-icon">⇅</span> Sắp xếp thứ tự:
+          <span class="control-icon">⇅</span> Sắp xếp:
         </label>
         <select id="sort-select" v-model="sortBy" @change="handleSortChange" class="control-select">
-          <option value="">Mặc định (Theo mã sản phẩm)</option>
-          <option value="price_asc">Giá: Thấp đến Cao</option>
-          <option value="price_desc">Giá: Cao đến Thấp</option>
-          <option value="stock_asc">Tồn kho: Ít nhất (Ưu tiên kiểm tra)</option>
+          <option value="">Theo mã SKU</option>
+          <option value="price_asc">Giá: Thấp → Cao</option>
+          <option value="price_desc">Giá: Cao → Thấp</option>
+          <option value="stock_asc">Tồn kho: Ít nhất (Ưu tiên)</option>
           <option value="stock_desc">Tồn kho: Nhiều nhất</option>
           <option value="category">Theo Danh mục</option>
         </select>
+      </div>
+
+      <!-- US2-Task 4: Bộ chọn nhanh Chế độ Bố cục (Presets) theo mức độ cần thiết -->
+      <div class="control-box preset-control">
+        <span class="control-label">
+          <span class="control-icon">📐</span> Chế độ xem:
+        </span>
+        <div class="preset-pill-group">
+          <button
+            type="button"
+            :class="['preset-btn', currentPreset === 'compact' ? 'active' : '']"
+            @click="applyPreset('compact')"
+            title="Chế độ gọn: Tối giản không gian, chỉ hiển thị thông tin thiết yếu nhất (SKU, Tên, Giá, Tồn kho, Cảnh báo)"
+          >
+            ⚡ Gọn
+          </button>
+          <button
+            type="button"
+            :class="['preset-btn', currentPreset === 'standard' ? 'active' : '']"
+            @click="applyPreset('standard')"
+            title="Chế độ tiêu chuẩn: Cân đối giữa thông tin cốt lõi và danh mục, nổi bật"
+          >
+            📋 Tiêu chuẩn
+          </button>
+          <button
+            type="button"
+            :class="['preset-btn', currentPreset === 'detailed' ? 'active' : '']"
+            @click="applyPreset('detailed')"
+            title="Chế độ đầy đủ: Hiển thị toàn bộ thông tin chi tiết (Mô tả, ID, Mốc thời gian...)"
+          >
+            🔍 Đầy đủ
+          </button>
+        </div>
+      </div>
+
+      <!-- US2-Task 4: Dropdown Menu Tùy biến cột hiển thị -->
+      <div class="col-customizer-wrapper" ref="colDropdownRef">
+        <button
+          type="button"
+          class="btn-col-trigger"
+          :class="{ active: isColDropdownOpen }"
+          @click="isColDropdownOpen = !isColDropdownOpen"
+          title="Bật/Tắt các cột theo nhu cầu quan sát"
+        >
+          <span class="btn-icon">⚙️</span>
+          <span>Bố cục cột ({{ visibleColumnCount }}/{{ columns.length }})</span>
+          <span class="arrow-icon">{{ isColDropdownOpen ? '▲' : '▼' }}</span>
+        </button>
+
+        <!-- Dropdown Popover Tùy biến cột -->
+        <div v-if="isColDropdownOpen" class="col-dropdown-menu">
+          <div class="dropdown-header">
+            <span class="dropdown-title">Bố cục thông tin theo mức độ</span>
+            <button type="button" @click="resetColumns" class="btn-reset-cols">
+              Đặt lại
+            </button>
+          </div>
+
+          <!-- Mức 1: Thiết yếu -->
+          <div class="col-group-section">
+            <div class="col-group-title text-essential">
+              <span class="level-indicator dot-essential"></span> Mức 1: Thiết yếu (Cần thiết nhất)
+            </div>
+            <div class="col-items-list">
+              <label v-for="col in essentialColumns" :key="col.key" class="col-checkbox-label">
+                <input
+                  type="checkbox"
+                  v-model="col.visible"
+                  :disabled="col.alwaysVisible"
+                  @change="handleColumnToggle"
+                />
+                <span :class="{ 'font-semibold': col.alwaysVisible }">{{ col.label }}</span>
+                <span v-if="col.alwaysVisible" class="col-locked-badge">(Bắt buộc)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Mức 2: Bổ sung -->
+          <div class="col-group-section">
+            <div class="col-group-title text-standard">
+              <span class="level-indicator dot-standard"></span> Mức 2: Bổ sung thường dùng
+            </div>
+            <div class="col-items-list">
+              <label v-for="col in standardColumns" :key="col.key" class="col-checkbox-label">
+                <input
+                  type="checkbox"
+                  v-model="col.visible"
+                  @change="handleColumnToggle"
+                />
+                <span>{{ col.label }}</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Mức 3: Mở rộng -->
+          <div class="col-group-section">
+            <div class="col-group-title text-detailed">
+              <span class="level-indicator dot-detailed"></span> Mức 3: Chi tiết mở rộng
+            </div>
+            <div class="col-items-list">
+              <label v-for="col in detailedColumns" :key="col.key" class="col-checkbox-label">
+                <input
+                  type="checkbox"
+                  v-model="col.visible"
+                  @change="handleColumnToggle"
+                />
+                <span>{{ col.label }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -114,25 +227,28 @@
       <button @click="fetchProducts(currentPage)" class="btn-retry">Thử lại</button>
     </div>
 
-    <!-- Bảng danh sách sản phẩm hiển thị Gom nhóm & Sắp xếp -->
+    <!-- Bảng danh sách sản phẩm hiển thị Gom nhóm & Bố cục tùy biến động -->
     <div class="table-container">
-      <table class="data-table">
+      <table :class="['data-table', currentPreset === 'compact' ? 'table-compact' : '']">
         <thead>
           <tr>
-            <th>SKU</th>
-            <th>Tên Sản Phẩm</th>
-            <th>Danh Mục</th>
-            <th>Đơn Giá</th>
-            <th>Tồn Kho</th>
-            <th>Tình Trạng Kho</th>
-            <th>Nổi Bật</th>
-            <th>Thao Tác</th>
+            <th v-if="isColVisible('id')" style="width: 70px;">ID</th>
+            <th v-if="isColVisible('sku')">SKU</th>
+            <th v-if="isColVisible('name')">Tên Sản Phẩm</th>
+            <th v-if="isColVisible('description')" style="max-width: 250px;">Mô Tả</th>
+            <th v-if="isColVisible('category')">Danh Mục</th>
+            <th v-if="isColVisible('price')">Đơn Giá</th>
+            <th v-if="isColVisible('stock')">Tồn Kho</th>
+            <th v-if="isColVisible('stock_status')">Tình Trạng Kho</th>
+            <th v-if="isColVisible('created_at')">Mốc Thời Gian</th>
+            <th v-if="isColVisible('is_featured')">Nổi Bật</th>
+            <th v-if="isColVisible('actions')">Thao Tác</th>
           </tr>
         </thead>
         <tbody>
           <!-- Trạng thái Loading -->
           <tr v-if="loading">
-            <td colspan="8" class="text-center py-8 state-cell">
+            <td :colspan="visibleColumnCount" class="text-center py-8 state-cell">
               <div class="spinner"></div>
               <span>Đang tải danh sách sản phẩm...</span>
             </td>
@@ -140,7 +256,7 @@
 
           <!-- Trạng thái Không có sản phẩm nào sau khi lọc -->
           <tr v-else-if="filteredProducts.length === 0">
-            <td colspan="8" class="empty-table-cell">
+            <td :colspan="visibleColumnCount" class="empty-table-cell">
               <div class="empty-filter-box">
                 <span class="empty-icon">📦</span>
                 <p class="empty-msg">Không tìm thấy sản phẩm nào phù hợp với bộ lọc hiện tại</p>
@@ -156,11 +272,11 @@
             </td>
           </tr>
 
-          <!-- Dữ liệu hiển thị (Hỗ trợ Gom nhóm theo Khối hoặc Bảng phẳng) -->
+          <!-- Dữ liệu hiển thị (Hỗ trợ Gom nhóm theo Khối & Bố cục cột tùy biến) -->
           <template v-else v-for="group in groupedProducts" :key="group.key">
             <!-- Dòng Tiêu đề Khối Nhóm (Chỉ hiện khi bật Gom nhóm) -->
             <tr v-if="groupBy !== 'none'" class="group-header-row">
-              <td colspan="8">
+              <td :colspan="visibleColumnCount">
                 <div class="group-header-content">
                   <span class="group-header-title">
                     <span class="group-header-icon">{{ group.icon }}</span>
@@ -174,32 +290,66 @@
               </td>
             </tr>
 
-            <!-- Các dòng sản phẩm bên trong nhóm -->
+            <!-- Các dòng sản phẩm bên trong nhóm (Ẩn/Hiện cột theo cấu hình tùy biến) -->
             <tr v-for="prod in group.items" :key="prod.id" class="product-data-row">
-              <td><code>{{ prod.sku }}</code></td>
-              <td class="font-medium text-white">{{ prod.name }}</td>
-              <td>
+              <!-- Cột ID (Mức 3 - Chi tiết) -->
+              <td v-if="isColVisible('id')">
+                <span class="id-tag">#{{ prod.id }}</span>
+              </td>
+
+              <!-- Cột SKU (Mức 1 - Thiết yếu) -->
+              <td v-if="isColVisible('sku')">
+                <code>{{ prod.sku }}</code>
+              </td>
+
+              <!-- Cột Tên sản phẩm (Mức 1 - Thiết yếu - Luôn bật) -->
+              <td v-if="isColVisible('name')" class="font-medium text-white">
+                {{ prod.name }}
+              </td>
+
+              <!-- Cột Mô tả (Mức 3 - Chi tiết) -->
+              <td v-if="isColVisible('description')" class="desc-cell" :title="prod.description || ''">
+                {{ prod.description || '—' }}
+              </td>
+
+              <!-- Cột Danh mục (Mức 2 - Bổ sung) -->
+              <td v-if="isColVisible('category')">
                 <span class="category-tag">
                   {{ categoryMap[prod.category_id] || `#${prod.category_id}` }}
                 </span>
               </td>
-              <td class="price-cell">
+
+              <!-- Cột Đơn giá (Mức 1 - Thiết yếu) -->
+              <td v-if="isColVisible('price')" class="price-cell">
                 <div class="price-vnd-text">{{ formatVND(getProductPriceVND(prod.price)) }}</div>
                 <div class="price-usd-sub">${{ Number(prod.price).toFixed(2) }}</div>
               </td>
-              <td class="stock-cell font-semibold">
+
+              <!-- Cột Số lượng tồn kho (Mức 1 - Thiết yếu) -->
+              <td v-if="isColVisible('stock')" class="stock-cell font-semibold">
                 {{ prod.stock }} cái
               </td>
-              <td>
+
+              <!-- Cột Tình trạng kho (Mức 1 - Thiết yếu) -->
+              <td v-if="isColVisible('stock_status')">
                 <span :class="['stock-status-badge', getStockStatus(prod).badgeClass]">
                   {{ getStockStatus(prod).label }}
                 </span>
               </td>
-              <td>
+
+              <!-- Cột Mốc thời gian nhập (Mức 3 - Chi tiết) -->
+              <td v-if="isColVisible('created_at')" class="time-cell">
+                <span class="time-text">{{ formatDateTime(prod.created_at) }}</span>
+              </td>
+
+              <!-- Cột Nổi bật (Mức 2 - Bổ sung) -->
+              <td v-if="isColVisible('is_featured')">
                 <span v-if="prod.is_featured" class="badge-featured">⭐ Nổi bật</span>
                 <span v-else class="text-muted">—</span>
               </td>
-              <td>
+
+              <!-- Cột Thao tác (Mức 2 - Bổ sung) -->
+              <td v-if="isColVisible('actions')">
                 <button @click="handleDelete(prod.id)" class="btn-sm btn-delete">Xoá</button>
               </td>
             </tr>
@@ -235,7 +385,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '../../lib/api';
 import type { Product } from '../../types';
 import PriceFilter from '../../components/PriceFilter.vue';
@@ -270,6 +420,143 @@ const selectedStockTab = ref<StockFilterType>('all');
 // State Task 5: Gom nhóm & Sắp xếp (Ngọc)
 const groupBy = ref<'none' | 'category' | 'stock_status'>('none');
 const sortBy = ref('');
+
+// ==============================================================================
+// US2 - TASK 4: ĐIỀU CHỈNH BỐ CỤC THÔNG TIN HIỂN THỊ THEO MỨC ĐỘ CẦN THIẾT
+// ==============================================================================
+export interface ColumnDefinition {
+  key: string;
+  label: string;
+  visible: boolean;
+  level: 'essential' | 'standard' | 'detailed';
+  alwaysVisible?: boolean;
+}
+
+type LayoutPreset = 'compact' | 'standard' | 'detailed' | 'custom';
+const currentPreset = ref<LayoutPreset>('standard');
+const isColDropdownOpen = ref(false);
+const colDropdownRef = ref<HTMLElement | null>(null);
+
+// Danh sách các cột phân chia theo 3 mức độ cần thiết
+const columns = ref<ColumnDefinition[]>([
+  // Mức 1: Thiết yếu (Bắt buộc / Cần thiết nhất cho kiểm kê)
+  { key: 'sku', label: 'Mã SKU', visible: true, level: 'essential' },
+  { key: 'name', label: 'Tên Sản Phẩm', visible: true, level: 'essential', alwaysVisible: true },
+  { key: 'price', label: 'Đơn Giá', visible: true, level: 'essential' },
+  { key: 'stock', label: 'Số Lượng Tồn', visible: true, level: 'essential' },
+  { key: 'stock_status', label: 'Tình Trạng Kho', visible: true, level: 'essential' },
+
+  // Mức 2: Bổ sung thường dùng (Tiêu chuẩn)
+  { key: 'category', label: 'Danh Mục', visible: true, level: 'standard' },
+  { key: 'is_featured', label: 'Đánh Dấu Nổi Bật', visible: true, level: 'standard' },
+  { key: 'actions', label: 'Thao Tác (Xóa)', visible: true, level: 'standard' },
+
+  // Mức 3: Chi tiết mở rộng (Phục vụ đối chiếu sâu)
+  { key: 'id', label: 'Mã ID Hệ Thống', visible: false, level: 'detailed' },
+  { key: 'description', label: 'Mô Tả Sản Phẩm', visible: false, level: 'detailed' },
+  { key: 'created_at', label: 'Thời Điểm Nhập Kho', visible: false, level: 'detailed' },
+]);
+
+// Nhóm cột theo mức độ để hiển thị trong Popover tùy biến
+const essentialColumns = computed(() => columns.value.filter((c) => c.level === 'essential'));
+const standardColumns = computed(() => columns.value.filter((c) => c.level === 'standard'));
+const detailedColumns = computed(() => columns.value.filter((c) => c.level === 'detailed'));
+
+// Tính toán tổng số cột đang hiển thị để căn đúng colspan cho các dòng đặc biệt
+const visibleColumnCount = computed(() => {
+  return columns.value.filter((col) => col.visible).length;
+});
+
+function isColVisible(key: string): boolean {
+  const col = columns.value.find((c) => c.key === key);
+  return col ? col.visible : true;
+}
+
+// Áp dụng các chế độ bố cục nhanh (Presets)
+function applyPreset(preset: 'compact' | 'standard' | 'detailed') {
+  currentPreset.value = preset;
+  if (preset === 'compact') {
+    // Chế độ Gọn: Chỉ giữ mức 1 (Thiết yếu)
+    columns.value.forEach((col) => {
+      col.visible = col.level === 'essential';
+    });
+  } else if (preset === 'standard') {
+    // Chế độ Tiêu chuẩn: Mức 1 + Mức 2
+    columns.value.forEach((col) => {
+      col.visible = col.level === 'essential' || col.level === 'standard';
+    });
+  } else if (preset === 'detailed') {
+    // Chế độ Đầy đủ: Mức 1 + Mức 2 + Mức 3
+    columns.value.forEach((col) => {
+      col.visible = true;
+    });
+  }
+  saveLayoutSettings();
+}
+
+// Khi người dùng tự tay bật/tắt checkbox riêng lẻ
+function handleColumnToggle() {
+  currentPreset.value = 'custom';
+  saveLayoutSettings();
+}
+
+// Đặt lại bố cục mặc định (Tiêu chuẩn)
+function resetColumns() {
+  applyPreset('standard');
+}
+
+// Lưu trữ cấu hình bố cục vào LocalStorage
+const STORAGE_KEY = 'tz_products_layout_settings_v2';
+
+function saveLayoutSettings() {
+  try {
+    const data = {
+      preset: currentPreset.value,
+      columns: columns.value.map((c) => ({ key: c.key, visible: c.visible })),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (err) {
+    console.error('Không thể lưu cài đặt bố cục:', err);
+  }
+}
+
+function loadLayoutSettings() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.preset) currentPreset.value = parsed.preset;
+      if (Array.isArray(parsed.columns)) {
+        parsed.columns.forEach((savedCol: { key: string; visible: boolean }) => {
+          const target = columns.value.find((c) => c.key === savedCol.key);
+          if (target && !target.alwaysVisible) {
+            target.visible = savedCol.visible;
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Không thể tải cài đặt bố cục:', err);
+  }
+}
+
+// Tự động đóng dropdown khi click chuột ra ngoài
+function handleClickOutside(event: MouseEvent) {
+  if (colDropdownRef.value && !colDropdownRef.value.contains(event.target as Node)) {
+    isColDropdownOpen.value = false;
+  }
+}
+
+// Hàm định dạng ngày giờ chuẩn Việt Nam
+function formatDateTime(dateStr?: string | null) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ==============================================================================
+// CÁC HÀM XỬ LÝ DỮ LIỆU & BỘ LỌC CỦA US1
+// ==============================================================================
 
 // Hàm tính ngày lưu kho và phân loại tình trạng tồn kho theo chuẩn nghiệp vụ US1:
 function getStockStatus(prod: Product) {
@@ -506,12 +793,12 @@ async function fetchProducts(page = 1) {
   }
 }
 
-// Xử lý đổi tiêu chí sắp xếp (Task 5)
+// Xử lý khi đổi tiêu chí sắp xếp (Task 5)
 function handleSortChange() {
   fetchProducts(1);
 }
 
-// Xử lý đổi bộ lọc Task 1 (Search / Category)
+// Xử lý khi bộ lọc Task 1 thay đổi (Search / Category)
 function handleFilterChange(payload: { search: string; categoryId: number | null }) {
   searchKeyword.value = payload.search;
   selectedCategoryId.value = payload.categoryId;
@@ -574,16 +861,22 @@ async function handleDelete(id: number) {
 }
 
 onMounted(() => {
+  loadLayoutSettings();
+  window.addEventListener('click', handleClickOutside);
   fetchCategoriesMap();
   fetchProducts();
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleClickOutside);
 });
 </script>
 
 <style scoped>
 .admin-page {
-  max-width: 1280px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2rem 1.5rem 4rem;
 }
 
 .page-header {
@@ -724,7 +1017,7 @@ onMounted(() => {
   color: #4ade80;
 }
 
-/* Thanh điều khiển Gom nhóm & Sắp xếp (Task 5) */
+/* Thanh điều khiển Gom nhóm (US1-5) & Bố cục hiển thị (US2-4) */
 .view-controls-bar {
   display: flex;
   flex-wrap: wrap;
@@ -744,16 +1037,17 @@ onMounted(() => {
 }
 
 .control-label {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: #cbd5e1;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .control-icon {
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 
 .control-select {
@@ -763,7 +1057,7 @@ onMounted(() => {
   border: 1px solid #475569;
   color: #f8fafc;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   outline: none;
   transition: border-color 0.2s ease;
 }
@@ -772,6 +1066,179 @@ onMounted(() => {
   border-color: #38bdf8;
 }
 
+/* Preset Pill Group */
+.preset-pill-group {
+  display: flex;
+  background: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 0.4rem;
+  padding: 0.15rem;
+  gap: 0.2rem;
+}
+
+.preset-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-btn:hover {
+  color: #f8fafc;
+}
+
+.preset-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.4);
+}
+
+/* Menu Dropdown Tùy biến cột (US2-Task 4) */
+.col-customizer-wrapper {
+  position: relative;
+  margin-left: auto;
+}
+
+.btn-col-trigger {
+  background: #0f172a;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.375rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-col-trigger:hover,
+.btn-col-trigger.active {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.arrow-icon {
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+
+.col-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 0.5rem;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  padding: 0.85rem 1rem;
+  z-index: 100;
+  animation: popIn 0.15s ease-out;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.dropdown-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #f8fafc;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.btn-reset-cols {
+  background: transparent;
+  color: #38bdf8;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+}
+
+.btn-reset-cols:hover {
+  text-decoration: underline;
+}
+
+.col-group-section {
+  margin-bottom: 0.75rem;
+}
+
+.col-group-title {
+  font-size: 0.725rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.level-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.text-essential { color: #38bdf8; }
+.dot-essential { background: #38bdf8; }
+
+.text-standard { color: #facc15; }
+.dot-standard { background: #facc15; }
+
+.text-detailed { color: #94a3b8; }
+.dot-detailed { background: #94a3b8; }
+
+.col-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-left: 0.5rem;
+}
+
+.col-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.825rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.col-checkbox-label:hover {
+  color: #f8fafc;
+}
+
+.col-locked-badge {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Error banner */
 .error-banner {
   display: flex;
   align-items: center;
@@ -805,7 +1272,7 @@ onMounted(() => {
   background: #1e293b;
   border: 1px solid #334155;
   border-radius: 0.5rem;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .data-table {
@@ -821,6 +1288,7 @@ onMounted(() => {
   text-transform: uppercase;
   border-bottom: 1px solid #334155;
   text-align: left;
+  white-space: nowrap;
 }
 
 .data-table td {
@@ -828,6 +1296,17 @@ onMounted(() => {
   border-bottom: 1px solid #334155;
   color: #cbd5e1;
   font-size: 0.9rem;
+}
+
+/* Chế độ Gọn (Compact Mode) của Preset ⚡ Gọn */
+.table-compact th {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.table-compact td {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
 }
 
 .product-data-row:hover {
@@ -886,6 +1365,30 @@ onMounted(() => {
 
 .group-badge-stock strong {
   color: #f8fafc;
+}
+
+.id-tag {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+.desc-cell {
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #94a3b8;
+  font-size: 0.825rem;
+}
+
+.time-cell {
+  white-space: nowrap;
+}
+
+.time-text {
+  font-size: 0.8rem;
+  color: #94a3b8;
 }
 
 .category-tag {
@@ -1064,11 +1567,6 @@ onMounted(() => {
   padding: 1rem 0;
   color: #94a3b8;
   font-size: 0.875rem;
-}
-
-.pagination-bar strong {
-  color: #38bdf8;
-  font-size: 1rem;
 }
 
 .pagination-btns {
