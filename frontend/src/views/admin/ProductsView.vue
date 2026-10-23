@@ -326,7 +326,7 @@ const maxPrice = ref<string | null>(null);
 const isFeaturedOnly = ref(false);
 
 // State Task 4: Tình trạng tồn kho (Quân)
-type StockFilterType = 'all' | 'in_stock' | 'out_of_stock' | 'low_stock' | 'aged_stock';
+type StockFilterType = 'all' | 'in_stock' | 'out_of_stock' | 'low_stock' | 'aged_stock' | 'overstocked' | 'normal';
 const selectedStockTab = ref<StockFilterType>('all');
 
 // State Task 5: Gom nhóm & Sắp xếp (Ngọc)
@@ -1620,3 +1620,4 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 </style>
+
