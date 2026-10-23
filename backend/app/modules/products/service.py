@@ -31,17 +31,29 @@ class ProductService:
                     query = query.filter(search_filter)
             if filters.is_featured is not None:
                 query = query.filter(Product.is_featured == filters.is_featured)
+            if filters.min_price is not None:
+                query = query.filter(Product.price >= filters.min_price)
+            if filters.max_price is not None:
+                query = query.filter(Product.price <= filters.max_price)
             if filters.low_stock_threshold is not None:
                 query = query.filter(Product.stock <= filters.low_stock_threshold)
 
             # Lọc theo tình trạng tồn kho:
             # - out_of_stock: stock == 0
-            # - overstocked: lưu kho > 2 tháng (60 ngày) VÀ stock > 10
+            # - overstocked: legacy, lưu kho > 2 tháng (60 ngày) VÀ stock > 10
             # - normal: các trường hợp còn lại
+            # - in_stock/low_stock/aged_stock: trạng thái mới cho màn quản trị
             if filters.stock_status:
                 cutoff_date = datetime.now(timezone.utc) - timedelta(days=60)
+                aged_cutoff_date = datetime.now(timezone.utc) - timedelta(days=20)
                 if filters.stock_status == "out_of_stock":
                     query = query.filter(Product.stock == 0)
+                elif filters.stock_status == "in_stock":
+                    query = query.filter(Product.stock > 0)
+                elif filters.stock_status == "low_stock":
+                    query = query.filter(and_(Product.stock >= 1, Product.stock < 10))
+                elif filters.stock_status == "aged_stock":
+                    query = query.filter(and_(Product.stock >= 10, Product.created_at <= aged_cutoff_date))
                 elif filters.stock_status == "overstocked":
                     query = query.filter(
                         and_(
@@ -71,6 +83,20 @@ class ProductService:
                 query = query.order_by(Product.stock.desc(), Product.id.asc())
             elif filters.sort_by == "category":
                 query = query.order_by(Product.category_id.asc(), Product.id.asc())
+            elif filters.sort_by == "created_desc":
+                query = query.order_by(Product.created_at.desc(), Product.id.asc())
+            elif filters.sort_by == "created_asc":
+                query = query.order_by(Product.created_at.asc(), Product.id.asc())
+            elif filters.sort_by == "name_asc":
+                query = query.order_by(Product.name.asc(), Product.id.asc())
+            elif filters.sort_by == "name_desc":
+                query = query.order_by(Product.name.desc(), Product.id.asc())
+            elif filters.sort_by == "sku_asc":
+                query = query.order_by(Product.sku.asc(), Product.id.asc())
+            elif filters.sort_by == "sku_desc":
+                query = query.order_by(Product.sku.desc(), Product.id.asc())
+            elif filters.sort_by == "featured_first":
+                query = query.order_by(Product.is_featured.desc(), Product.id.asc())
             elif ranking_score is not None:
                 query = query.order_by(ranking_score.desc(), Product.id.asc())
             else:

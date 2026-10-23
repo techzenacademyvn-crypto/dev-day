@@ -1,5 +1,6 @@
+from decimal import Decimal
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -20,14 +21,18 @@ router = APIRouter(prefix="/products", tags=["3. Sản phẩm (Products)"])
 def list_products(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    search: Optional[str] = Query(default=None, description="Tìm theo tên sản phẩm"),
+    search: Optional[str] = Query(default=None, description="Tìm theo tên hoặc SKU sản phẩm"),
     category_id: Optional[int] = Query(default=None, description="Lọc theo danh mục"),
     low_stock_threshold: Optional[int] = Query(default=None, description="Lọc sắp hết hàng"),
     is_featured: Optional[bool] = Query(default=None, description="Lọc sản phẩm nổi bật"),
     stock_status: Optional[str] = Query(default=None, description="Lọc theo tình trạng tồn kho: out_of_stock | overstocked | normal"),
     sort_by: Optional[str] = Query(default=None, description="Sắp xếp theo giá/tồn"),
+    min_price: Optional[Decimal] = Query(default=None, ge=0, description="Giá USD tối thiểu"),
+    max_price: Optional[Decimal] = Query(default=None, ge=0, description="Giá USD tối đa"),
     db: Session = Depends(get_db),
 ):
+    if min_price is not None and max_price is not None and min_price > max_price:
+        raise HTTPException(status_code=422, detail="max_price phải lớn hơn hoặc bằng min_price")
     filters = ProductFilter(
         search=search,
         category_id=category_id,
@@ -35,6 +40,8 @@ def list_products(
         is_featured=is_featured,
         stock_status=stock_status,
         sort_by=sort_by,
+        min_price=min_price,
+        max_price=max_price,
     )
     items, total = ProductService.get_list(db, page=page, page_size=page_size, filters=filters)
     page_data = PageResponse.create(

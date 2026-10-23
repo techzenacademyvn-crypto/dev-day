@@ -8,86 +8,7 @@
       <button @click="openCreateModal" class="btn-primary">+ Thêm Sản Phẩm</button>
     </div>
 
-    <!-- Task 1 (Vinh): Thanh tìm kiếm thông minh & bộ lọc danh mục Tree Select -->
-    <ProductSearchFilters
-      :initial-search="searchKeyword"
-      :initial-category="selectedCategoryId"
-      @filter="handleFilterChange"
-    />
-
-    <!-- Task 2 (Công): Bộ lọc khoảng giá (Dual-thumb Slider & Quick Price Chips) -->
-    <PriceFilter
-      ref="priceFilterRef"
-      v-model="priceRange"
-      :min="0"
-      :max="2000000"
-      :step="10000"
-    />
-
-    <!-- Task 3 (Hoài): Bộ lọc sản phẩm nổi bật -->
-    <div class="featured-filter-bar">
-      <label class="featured-toggle-label" for="toggle-featured">
-        <div
-          id="toggle-featured"
-          class="toggle-switch"
-          :class="{ active: isFeaturedOnly }"
-          role="switch"
-          :aria-checked="isFeaturedOnly"
-          tabindex="0"
-          @click="toggleFeatured"
-          @keydown.enter="toggleFeatured"
-          @keydown.space.prevent="toggleFeatured"
-        >
-          <div class="toggle-thumb"></div>
-        </div>
-        <span class="toggle-text">
-          <span v-if="isFeaturedOnly" class="toggle-active-text">⭐ Chỉ sản phẩm nổi bật</span>
-          <span v-else>Chỉ hiển thị sản phẩm nổi bật</span>
-        </span>
-      </label>
-    </div>
-
-    <!-- Task 4 (Quân): Bộ lọc nhanh tình trạng tồn kho -->
-    <div class="stock-filter-bar">
-      <div class="stock-tabs">
-        <button
-          :class="['tab-btn', selectedStockTab === 'all' ? 'active' : '']"
-          @click="changeStockTab('all')"
-        >
-          Tất cả ({{ stockCounts.all }})
-        </button>
-        <button
-          :class="['tab-btn tab-danger', selectedStockTab === 'out_of_stock' ? 'active' : '']"
-          @click="changeStockTab('out_of_stock')"
-        >
-          🔴 Hết hàng ({{ stockCounts.out_of_stock }})
-        </button>
-        <button
-          :class="['tab-btn tab-warning', selectedStockTab === 'overstocked' ? 'active' : '']"
-          @click="changeStockTab('overstocked')"
-          title="Điều kiện Hàng tồn kho: Lưu kho > 2 tháng (> 60 ngày) và số lượng tồn > 10 sản phẩm"
-        >
-          🟡 Tồn kho ({{ stockCounts.overstocked }})
-        </button>
-        <button
-          :class="['tab-btn tab-success', selectedStockTab === 'normal' ? 'active' : '']"
-          @click="changeStockTab('normal')"
-        >
-          🟢 Bình thường ({{ stockCounts.normal }})
-        </button>
-      </div>
-
-      <!-- Ghi chú rõ điều kiện hàng tồn kho khi mở tab Tồn kho -->
-      <div v-if="selectedStockTab === 'overstocked'" class="stock-condition-banner">
-        <span class="condition-icon">ℹ️</span>
-        <div class="condition-content">
-          <span class="condition-title">Điều kiện Hàng tồn kho:</span>
-          <span class="condition-desc">
-            Sản phẩm có thời gian lưu kho <strong>&gt; 2 tháng (&gt; 60 ngày)</strong> VÀ số lượng tồn kho còn <strong>nhiều hơn 10 sản phẩm</strong> (&gt; 10 cái).
-          </span>
-        </div>
-      </div>
-    </div>
+    <ProductFilterToolbar @apply="applyFilters" @reset="resetAllFilters" />
 
     <!-- Thanh công cụ Điều khiển: Gom nhóm (US1-Task 5) & Bố cục hiển thị theo mức độ cần thiết (US2-Task 4) -->
     <div class="view-controls-bar">
@@ -100,21 +21,6 @@
           <option value="none">Mặc định (Bảng phẳng)</option>
           <option value="category">📁 Theo Danh mục</option>
           <option value="stock_status">📊 Theo Tình trạng kho</option>
-        </select>
-      </div>
-
-      <!-- US1-Task 5: Sắp xếp thứ tự -->
-      <div class="control-box sort-control">
-        <label for="sort-select" class="control-label">
-          <span class="control-icon">⇅</span> Sắp xếp:
-        </label>
-        <select id="sort-select" v-model="sortBy" @change="handleSortChange" class="control-select">
-          <option value="">Theo mã SKU</option>
-          <option value="price_asc">Giá: Thấp → Cao</option>
-          <option value="price_desc">Giá: Cao → Thấp</option>
-          <option value="stock_asc">Tồn kho: Ít nhất (Ưu tiên)</option>
-          <option value="stock_desc">Tồn kho: Nhiều nhất</option>
-          <option value="category">Theo Danh mục</option>
         </select>
       </div>
 
@@ -273,9 +179,6 @@
                 <span class="empty-icon">📦</span>
                 <p class="empty-msg">Không tìm thấy sản phẩm nào phù hợp với bộ lọc hiện tại</p>
                 <div class="empty-actions">
-                  <button @click="resetPriceFilter" class="btn-reset-inline">
-                    🔄 Đặt lại giá
-                  </button>
                   <button @click="resetAllFilters" class="btn-reset-empty">
                     Xóa tất cả bộ lọc
                   </button>
@@ -333,8 +236,7 @@
 
               <!-- Cột Đơn giá (Mức 1 - Thiết yếu) -->
               <td v-if="isColVisible('price')" class="price-cell">
-                <div class="price-vnd-text">{{ formatVND(getProductPriceVND(prod.price)) }}</div>
-                <div class="price-usd-sub">${{ Number(prod.price).toFixed(2) }}</div>
+                <div class="price-usd-text">${{ Number(prod.price).toFixed(2) }}</div>
               </td>
 
               <!-- Cột Số lượng tồn kho (Mức 1 - Thiết yếu) -->
@@ -400,9 +302,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '../../lib/api';
 import type { Product } from '../../types';
-import PriceFilter from '../../components/PriceFilter.vue';
-import ProductSearchFilters from '../../components/admin/ProductSearchFilters.vue';
-import { getProductPriceVND, formatVND } from '../../utils/format';
+import ProductFilterToolbar, { type ProductFilterPayload } from '../../components/admin/ProductFilterToolbar.vue';
 
 const products = ref<Product[]>([]);
 const totalProducts = ref(0);
@@ -410,6 +310,7 @@ const currentPage = ref(1);
 const totalPages = ref(1);
 const loading = ref(false);
 const errorMessage = ref('');
+let navbarObserver: ResizeObserver | undefined;
 
 // Bộ nhớ cache tên danh mục để hiển thị đẹp thay vì ID thô
 const categoryMap = ref<Record<number, string>>({});
@@ -418,15 +319,14 @@ const categoryMap = ref<Record<number, string>>({});
 const searchKeyword = ref('');
 const selectedCategoryId = ref<number | null>(null);
 
-// State Task 2: Khoảng giá (Công)
-const priceFilterRef = ref<InstanceType<typeof PriceFilter> | null>(null);
-const priceRange = ref<[number, number]>([0, 2000000]);
+const minPrice = ref<string | null>(null);
+const maxPrice = ref<string | null>(null);
 
 // State Task 3: Sản phẩm nổi bật (Hoài)
 const isFeaturedOnly = ref(false);
 
 // State Task 4: Tình trạng tồn kho (Quân)
-type StockFilterType = 'all' | 'out_of_stock' | 'overstocked' | 'normal';
+type StockFilterType = 'all' | 'in_stock' | 'out_of_stock' | 'low_stock' | 'aged_stock';
 const selectedStockTab = ref<StockFilterType>('all');
 
 // State Task 5: Gom nhóm & Sắp xếp (Ngọc)
@@ -456,7 +356,6 @@ const columns = ref<ColumnDefinition[]>([
   { key: 'name', label: 'Tên Sản Phẩm', visible: true, level: 'essential', alwaysVisible: true },
   { key: 'price', label: 'Đơn Giá', visible: true, level: 'essential' },
   { key: 'stock', label: 'Số Lượng Tồn', visible: true, level: 'essential' },
-  { key: 'stock_status', label: 'Tình Trạng Kho', visible: true, level: 'essential' },
 
   // Mức 2: Bổ sung thường dùng (Tiêu chuẩn)
   { key: 'category', label: 'Danh Mục', visible: true, level: 'standard' },
@@ -466,7 +365,8 @@ const columns = ref<ColumnDefinition[]>([
   // Mức 3: Chi tiết mở rộng (Phục vụ đối chiếu sâu)
   { key: 'id', label: 'Mã ID Hệ Thống', visible: false, level: 'detailed' },
   { key: 'description', label: 'Mô Tả Sản Phẩm', visible: false, level: 'detailed' },
-  { key: 'created_at', label: 'Thời Điểm Nhập Kho', visible: false, level: 'detailed' },
+  { key: 'created_at', label: 'Thời Điểm Tạo Sản Phẩm', visible: false, level: 'detailed' },
+  { key: 'stock_status', label: 'Tình Trạng Kho', visible: false, level: 'detailed' },
 ]);
 
 // Nhóm cột theo mức độ để hiển thị trong Popover tùy biến
@@ -663,67 +563,32 @@ function getStockStatus(prod: Product) {
     };
   }
 
-  if (prod.created_at && prod.stock > 10) {
+  if (prod.stock > 0 && prod.stock < 10) {
+    return { key: 'low_stock', label: 'Tồn kho thấp', badgeClass: 'badge-overstocked' };
+  }
+
+  if (prod.created_at && prod.stock >= 10) {
     const createdTime = new Date(prod.created_at).getTime();
     const now = Date.now();
-    const sixtyDaysMs = 60 * 24 * 60 * 60 * 1000;
-    if (now - createdTime >= sixtyDaysMs) {
+    const twentyDaysMs = 20 * 24 * 60 * 60 * 1000;
+    if (now - createdTime >= twentyDaysMs) {
       return {
-        key: 'overstocked',
-        label: 'Tồn kho',
+        key: 'aged_stock',
+        label: 'Tồn kho ≥10 · Tạo ≥20 ngày',
         badgeClass: 'badge-overstocked',
       };
     }
   }
 
   return {
-    key: 'normal',
+    key: 'in_stock',
     label: 'Còn hàng',
     badgeClass: 'badge-in-stock',
   };
 }
 
-// Đếm số lượng sản phẩm theo từng tab tồn kho (Task 4)
-const stockCounts = computed(() => {
-  const counts = { all: 0, out_of_stock: 0, overstocked: 0, normal: 0 };
-  for (const prod of products.value) {
-    counts.all++;
-    const status = getStockStatus(prod).key as StockFilterType;
-    if (status in counts) {
-      counts[status]++;
-    }
-  }
-  // Nếu dữ liệu backend chưa có sản phẩm thỏa mãn điều kiện tồn kho (> 60 ngày & stock > 10),
-  // sử dụng số lượng từ bộ mock data để hiển thị đầy đủ trên Tab tồn kho
-  if (counts.overstocked === 0) {
-    counts.overstocked = mockOverstockedProducts.length;
-  }
-  return counts;
-});
-
-// Lọc sản phẩm hiển thị theo khoảng giá đã chọn (Task 2)
-const filteredProducts = computed(() => {
-  const [minPrice, maxPrice] = priceRange.value;
-  // Dùng mock data nếu đang chọn tab overstocked và danh sách từ DB rỗng
-  const sourceList = (selectedStockTab.value === 'overstocked' && products.value.length === 0)
-    ? mockOverstockedProducts
-    : products.value;
-
-  return sourceList.filter((prod) => {
-    // 1. Lọc theo giá (Task 2)
-    const vndPrice = getProductPriceVND(prod.price);
-    if (vndPrice < minPrice || vndPrice > maxPrice) {
-      return false;
-    }
-    // 2. Lọc theo tab tồn kho nếu đã chọn tab cụ thể (Task 4)
-    if (selectedStockTab.value !== 'all') {
-      if (getStockStatus(prod).key !== selectedStockTab.value) {
-        return false;
-      }
-    }
-    return true;
-  });
-});
+// Mọi filter đã được thực hiện ở backend trước phân trang.
+const filteredProducts = computed(() => products.value);
 
 // Cấu trúc khối gom nhóm cho Task 5
 interface ProductGroup {
@@ -878,6 +743,8 @@ async function fetchProducts(page = 1) {
     if (selectedStockTab.value !== 'all') {
       params.stock_status = selectedStockTab.value;
     }
+    if (minPrice.value !== null) params.min_price = minPrice.value;
+    if (maxPrice.value !== null) params.max_price = maxPrice.value;
     if (sortBy.value) {
       params.sort_by = sortBy.value;
     }
@@ -914,29 +781,14 @@ async function fetchProducts(page = 1) {
 }
 
 // Xử lý khi đổi tiêu chí sắp xếp (Task 5)
-function handleSortChange() {
-  fetchProducts(1);
-}
-
-// Xử lý khi bộ lọc Task 1 thay đổi (Search / Category)
-function handleFilterChange(payload: { search: string; categoryId: number | null }) {
+function applyFilters(payload: ProductFilterPayload) {
   searchKeyword.value = payload.search;
   selectedCategoryId.value = payload.categoryId;
-  currentPage.value = 1;
-  fetchProducts(1);
-}
-
-// Xử lý bật/tắt nổi bật (Task 3)
-function toggleFeatured() {
-  isFeaturedOnly.value = !isFeaturedOnly.value;
-  currentPage.value = 1;
-  fetchProducts(1);
-}
-
-// Xử lý đổi tab tồn kho (Task 4)
-function changeStockTab(tab: StockFilterType) {
-  selectedStockTab.value = tab;
-  currentPage.value = 1;
+  minPrice.value = payload.minPrice;
+  maxPrice.value = payload.maxPrice;
+  isFeaturedOnly.value = payload.isFeatured;
+  selectedStockTab.value = payload.stockStatus as StockFilterType;
+  sortBy.value = payload.sortBy;
   fetchProducts(1);
 }
 
@@ -945,22 +797,15 @@ function changePage(page: number) {
   fetchProducts(page);
 }
 
-// Đặt lại khoảng giá (Task 2)
-function resetPriceFilter() {
-  if (priceFilterRef.value) {
-    priceFilterRef.value.reset();
-  } else {
-    priceRange.value = [0, 2000000];
-  }
-}
-
 // Đặt lại toàn bộ bộ lọc
 function resetAllFilters() {
   searchKeyword.value = '';
   selectedCategoryId.value = null;
   selectedStockTab.value = 'all';
   isFeaturedOnly.value = false;
-  resetPriceFilter();
+  minPrice.value = null;
+  maxPrice.value = null;
+  sortBy.value = '';
   currentPage.value = 1;
   fetchProducts(1);
 }
@@ -981,6 +826,11 @@ async function handleDelete(id: number) {
 }
 
 onMounted(() => {
+  const navbar = document.querySelector<HTMLElement>('.navbar');
+  const setNavbarHeight = () => document.documentElement.style.setProperty('--tz-navbar-height', `${navbar?.offsetHeight || 0}px`);
+  setNavbarHeight();
+  navbarObserver = navbar ? new ResizeObserver(setNavbarHeight) : undefined;
+  if (navbar) navbarObserver?.observe(navbar);
   loadLayoutSettings();
   window.addEventListener('click', handleClickOutside);
   fetchCategoriesMap();
@@ -988,6 +838,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  navbarObserver?.disconnect();
+  document.documentElement.style.removeProperty('--tz-navbar-height');
   window.removeEventListener('click', handleClickOutside);
 });
 </script>
@@ -1453,6 +1305,9 @@ onUnmounted(() => {
 }
 
 .data-table th {
+  position: sticky;
+  top: calc(var(--tz-navbar-height, 0px) + var(--tz-filter-toolbar-height, 0px) + 14px);
+  z-index: 20;
   background: #0f172a;
   color: #94a3b8;
   padding: 0.85rem 1rem;
@@ -1578,7 +1433,7 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.price-vnd-text {
+.price-usd-text {
   font-size: 0.95rem;
   font-weight: 700;
   color: #38bdf8;

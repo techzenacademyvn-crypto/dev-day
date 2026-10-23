@@ -48,3 +48,5 @@ class ProductFilter(BaseModel):
     is_featured: Optional[bool] = None
     sort_by: Optional[str] = None  # "price_asc", "price_desc", "stock_asc", "stock_desc"
     stock_status: Optional[str] = Field(default=None, description="Lọc tình trạng tồn kho: out_of_stock | overstocked | normal")
+    min_price: Optional[Decimal] = Field(default=None, ge=0, description="Giá USD tối thiểu")
+    max_price: Optional[Decimal] = Field(default=None, ge=0, description="Giá USD tối đa")
