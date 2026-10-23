@@ -8,6 +8,20 @@
       <button @click="openCreateModal" class="btn-primary">+ Thêm Sản Phẩm</button>
     </div>
 
+    <!-- Thanh công cụ Sắp xếp (US1 Task 5) -->
+    <div class="toolbar-box">
+      <div class="sort-wrapper">
+        <label for="sort-select" class="sort-label">Sắp xếp: </label>
+        <select id="sort-select" v-model="sortBy" @change="handleSortChange" class="sort-select">
+          <option value="">Mặc định (Theo mã sản phẩm)</option>
+          <option value="price_asc">Giá: Thấp đến Cao</option>
+          <option value="price_desc">Giá: Cao đến Thấp</option>
+          <option value="stock_asc">Tồn kho: Ít nhất (Ưu tiên kiểm tra)</option>
+          <option value="stock_desc">Tồn kho: Nhiều nhất</option>
+          <option value="category">Gom nhóm theo Danh mục</option>
+        </select>
+      </div>
+    </div>
 
     <!-- Bảng danh sách sản phẩm -->
     <div class="table-container">
@@ -82,13 +96,18 @@ const totalProducts = ref(0);
 const currentPage = ref(1);
 const totalPages = ref(1);
 const loading = ref(false);
+const sortBy = ref('');
 
 async function fetchProducts(page = 1) {
   loading.value = true;
   currentPage.value = page;
   try {
     const res = await api.get('/products', {
-      params: { page, page_size: 20 },
+      params: { 
+        page, 
+        page_size: 20,
+        sort_by: sortBy.value || undefined,
+      },
     });
     if (res.data.success) {
       products.value = res.data.data.items;
@@ -100,6 +119,10 @@ async function fetchProducts(page = 1) {
   } finally {
     loading.value = false;
   }
+}
+
+function handleSortChange() {
+  fetchProducts(1);
 }
 
 function changePage(page: number) {
@@ -155,6 +178,34 @@ onMounted(() => {
   border-radius: 0.375rem;
   font-weight: 600;
   cursor: pointer;
+}
+.toolbar-box {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.sort-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sort-label {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+.sort-select {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 0.9rem;
+  outline: none;
+}
+.sort-select:focus {
+  border-color: #0284c7;
 }
 .table-container {
   background: #1e293b;
