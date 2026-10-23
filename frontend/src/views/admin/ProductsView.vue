@@ -5,7 +5,12 @@
         <h1 class="page-title">Quản Lý Sản Phẩm</h1>
         <p class="page-desc">Danh sách sản phẩm đang bán</p>
       </div>
-      <button @click="openCreateModal" class="btn-primary">+ Thêm Sản Phẩm</button>
+      <div class="header-actions">
+        <button @click="sortByFeatured" :class="['btn-featured', isFeaturedSorted ? 'active' : '']">
+          Sản phẩm nổi bật
+        </button>
+        <button @click="openCreateModal" class="btn-primary">+ Thêm Sản Phẩm</button>
+      </div>
     </div>
 
 
@@ -82,6 +87,7 @@ const totalProducts = ref(0);
 const currentPage = ref(1);
 const totalPages = ref(1);
 const loading = ref(false);
+const isFeaturedSorted = ref(false);
 
 async function fetchProducts(page = 1) {
   loading.value = true;
@@ -94,6 +100,7 @@ async function fetchProducts(page = 1) {
       products.value = res.data.data.items;
       totalProducts.value = res.data.data.total;
       totalPages.value = res.data.data.total_pages;
+      isFeaturedSorted.value = false;
     }
   } catch (err) {
     console.error(err);
@@ -104,6 +111,23 @@ async function fetchProducts(page = 1) {
 
 function changePage(page: number) {
   fetchProducts(page);
+}
+
+function sortByFeatured() {
+  if (!isFeaturedSorted.value) {
+    // Đẩy các sản phẩm nổi bật lên đầu
+    products.value = [...products.value].sort((a, b) => {
+      if (a.is_featured !== b.is_featured) {
+        return (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0);
+      }
+      return a.id - b.id;
+    });
+    isFeaturedSorted.value = true;
+  } else {
+    // Bấm lại lần nữa: Rã sản phẩm ra trở về thứ tự ban đầu
+    products.value = [...products.value].sort((a, b) => a.id - b.id);
+    isFeaturedSorted.value = false;
+  }
 }
 
 function openCreateModal() {
@@ -146,6 +170,29 @@ onMounted(() => {
 .page-desc {
   color: #94a3b8;
   font-size: 0.9rem;
+}
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+.btn-featured {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-featured:hover {
+  background: rgba(234, 179, 8, 0.25);
+}
+.btn-featured.active {
+  background: #eab308;
+  color: #0f172a;
+  border-color: #eab308;
 }
 .btn-primary {
   background: #0284c7;

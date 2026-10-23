@@ -9,7 +9,7 @@
 
     <div class="container">
       <div class="catalog-header">
-        <h2>Danh Sách Sản Phẩm Mẫu</h2>
+        <h2>Sản Phẩm Nổi Bật</h2>
         <span class="product-count">Hiển thị {{ products.length }} sản phẩm</span>
       </div>
 
