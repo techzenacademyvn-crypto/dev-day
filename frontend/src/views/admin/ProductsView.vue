@@ -444,6 +444,14 @@
         </form>
       </div>
     </div>
+
+    <!-- Modal Thêm Sản Phẩm Mới -->
+    <CreateProductModal
+      v-if="showCreateModal"
+      :categories="categories"
+      @close="showCreateModal = false"
+      @created="handleProductCreated"
+    />
   </div>
 </template>
 
@@ -452,6 +460,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import api from '../../lib/api';
 import type { Product, Category } from '../../types';
 import StockBadge from '../../components/StockBadge.vue';
+import CreateProductModal from '../../components/CreateProductModal.vue';
 
 const stickyFilterBarRef = ref<HTMLElement | null>(null);
 const filterBarHeight = ref(68);
@@ -473,6 +482,9 @@ const currentPage = ref(1);
 const totalPages = ref(1);
 const loading = ref(false);
 const errorMessage = ref<string | null>(null);
+
+// Modal thêm sản phẩm
+const showCreateModal = ref(false);
 
 // Modal tồn kho
 const showStockModal = ref(false);
@@ -864,7 +876,12 @@ function sortByFeatured() {
 }
 
 function openCreateModal() {
-  alert('Chức năng thêm sản phẩm qua form quản trị đã sẵn sàng kết nối API POST /products.');
+  showCreateModal.value = true;
+}
+
+async function handleProductCreated() {
+  showCreateModal.value = false;
+  await fetchProducts(1);
 }
 
 function openStockModal(prod: Product) {
