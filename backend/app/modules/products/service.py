@@ -85,6 +85,11 @@ class ProductService:
         if existing:
             raise BadRequestException(f"Mã SKU '{data.sku}' đã tồn tại trong hệ thống")
 
+        now_utc = datetime.now(timezone.utc)
+        restocked_at = now_utc if data.stock > 0 else None
+        out_of_stock_at = now_utc if data.stock == 0 else None
+        last_stock_action = "RESTOCK" if data.stock > 0 else "OUT_OF_STOCK"
+
         product = Product(
             category_id=data.category_id,
             name=data.name,
@@ -94,6 +99,9 @@ class ProductService:
             is_featured=data.is_featured,
             image_url=data.image_url,
             description=data.description,
+            restocked_at=restocked_at,
+            out_of_stock_at=out_of_stock_at,
+            last_stock_action=last_stock_action,
         )
         db.add(product)
         db.commit()
@@ -110,7 +118,22 @@ class ProductService:
                 raise BadRequestException(f"Mã SKU '{data.sku}' đã tồn tại trong hệ thống")
             product.sku = data.sku
 
-        for field, value in data.model_dump(exclude_unset=True).items():
+        update_dict = data.model_dump(exclude_unset=True)
+
+        if "stock" in update_dict and update_dict["stock"] is not None:
+            old_stock = product.stock
+            new_stock = update_dict["stock"]
+            now_utc = datetime.now(timezone.utc)
+            if new_stock > old_stock:
+                product.restocked_at = now_utc
+                product.last_stock_action = "RESTOCK"
+            elif new_stock == 0:
+                product.out_of_stock_at = now_utc
+                product.last_stock_action = "OUT_OF_STOCK"
+            elif new_stock < old_stock:
+                product.last_stock_action = "SOLD"
+
+        for field, value in update_dict.items():
             setattr(product, field, value)
 
         db.commit()

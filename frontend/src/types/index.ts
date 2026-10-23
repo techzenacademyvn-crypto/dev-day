@@ -38,6 +38,9 @@ export interface Product {
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
+  restocked_at?: string | null;
+  out_of_stock_at?: string | null;
+  last_stock_action?: string | null;
 }
 
 export interface PageResponse<T> {

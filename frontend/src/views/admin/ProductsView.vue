@@ -126,12 +126,13 @@
 
       <table class="data-table">
         <colgroup>
-          <col style="width: 6%" />
-          <col style="width: 36%" />
-          <col style="width: 17%" />
-          <col style="width: 13%" />
+          <col style="width: 5%" />
+          <col style="width: 27%" />
+          <col style="width: 14%" />
+          <col style="width: 11%" />
           <col style="width: 15%" />
-          <col style="width: 13%" />
+          <col style="width: 17%" />
+          <col style="width: 11%" />
         </colgroup>
         <thead>
           <tr>
@@ -153,29 +154,30 @@
                 </span>
               </div>
             </th>
-            <th class="th-sortable" @click="toggleSort('stock')" title="Sắp xếp theo Tồn kho (Tăng / Giảm)">
+            <th class="th-sortable" @click="toggleSort('stock')" title="Sắp xếp theo Số lượng hàng (Tăng / Giảm)">
               <div class="th-header-inner">
-                <span>Tồn Kho</span>
+                <span>Số Lượng Hàng</span>
                 <span :class="['sort-badge', sortBy.startsWith('stock_') ? 'sort-active' : '']">
                   {{ sortBy === 'stock_asc' ? '▲' : (sortBy === 'stock_desc' ? '▼' : '⇅') }}
                 </span>
               </div>
             </th>
+            <th title="Thời điểm nhập hàng hoặc hết hàng gần nhất">Cập Nhật Kho</th>
             <th class="text-right">Thao Tác</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="text-center py-6 text-muted">Đang tải sản phẩm...</td>
+            <td colspan="7" class="text-center py-6 text-muted">Đang tải sản phẩm...</td>
           </tr>
           <tr v-else-if="errorMessage">
-            <td colspan="6" class="text-center py-6 error-cell">
+            <td colspan="7" class="text-center py-6 error-cell">
               <span>{{ errorMessage }}</span>
               <button @click="fetchProducts(currentPage)" class="btn-sm btn-retry">Thử lại</button>
             </td>
           </tr>
           <tr v-else-if="products.length === 0">
-            <td colspan="6" class="empty-state">
+            <td colspan="7" class="empty-state">
               <div class="empty-state-content">
                 <div class="empty-icon">🔍</div>
                 <h3 class="empty-title">Không tìm thấy sản phẩm nào</h3>
@@ -204,6 +206,47 @@
             <td class="price-tag">${{ Number(prod.price).toFixed(2) }}</td>
             <td>
               <StockBadge :stock="prod.stock" />
+            </td>
+            <td>
+              <div class="stock-time-col">
+                <!-- Dòng 1: Thời điểm ngày giờ -->
+                <div
+                  v-if="prod.stock === 0 && prod.out_of_stock_at"
+                  class="stock-time-date text-out"
+                  :title="'Hết hàng lúc: ' + formatFullDateTime(prod.out_of_stock_at)"
+                >
+                  {{ formatShortDateTime(prod.out_of_stock_at) }}
+                </div>
+                <div
+                  v-else-if="prod.stock > 0 && prod.restocked_at"
+                  class="stock-time-date text-restock"
+                  :title="'Nhập hàng lúc: ' + formatFullDateTime(prod.restocked_at)"
+                >
+                  {{ formatShortDateTime(prod.restocked_at) }}
+                </div>
+                <div
+                  v-else-if="prod.updated_at"
+                  class="stock-time-date"
+                  :title="'Cập nhật lúc: ' + formatFullDateTime(prod.updated_at)"
+                >
+                  {{ formatShortDateTime(prod.updated_at) }}
+                </div>
+                <div v-else class="text-muted text-dim-dash">—</div>
+
+                <!-- Dòng 2: Thời gian tương đối kèm trạng thái (Thêm hàng / Đã bán / Hết hàng) -->
+                <div
+                  class="stock-update-line"
+                  :title="'Thời gian cập nhật gần nhất: ' + formatFullDateTime(prod.updated_at)"
+                >
+                  <span :class="['stock-action-text', getStockActionInfo(prod).cls]">
+                    {{ getStockActionInfo(prod).label }}
+                  </span>
+                  <span class="stock-action-sep">•</span>
+                  <span class="stock-update-text">
+                    {{ formatRelativeTime(prod.updated_at) }}
+                  </span>
+                </div>
+              </div>
             </td>
             <td class="text-right">
               <div class="action-buttons justify-end">
@@ -261,13 +304,31 @@
               <strong>{{ selectedProduct.name }}</strong>
             </div>
             <div class="info-row">
-              <span class="info-label">Tồn hiện tại:</span>
+              <span class="info-label">Số lượng hiện tại:</span>
               <StockBadge :stock="selectedProduct.stock" />
+            </div>
+            <div class="info-row">
+              <span class="info-label">Cập nhật gần nhất:</span>
+              <span class="info-value-time" :title="formatFullDateTime(selectedProduct.updated_at)">
+                🕒 {{ formatRelativeTime(selectedProduct.updated_at) }} ({{ formatFullDateTime(selectedProduct.updated_at) }})
+              </span>
+            </div>
+            <div v-if="selectedProduct.restocked_at" class="info-row">
+              <span class="info-label">Lần nhập gần nhất:</span>
+              <span class="info-value-time" :title="formatFullDateTime(selectedProduct.restocked_at)">
+                📦 {{ formatRelativeTime(selectedProduct.restocked_at) }} ({{ formatFullDateTime(selectedProduct.restocked_at) }})
+              </span>
+            </div>
+            <div v-if="selectedProduct.out_of_stock_at" class="info-row">
+              <span class="info-label">Lần hết gần nhất:</span>
+              <span class="info-value-time" :title="formatFullDateTime(selectedProduct.out_of_stock_at)">
+                ⏳ {{ formatRelativeTime(selectedProduct.out_of_stock_at) }} ({{ formatFullDateTime(selectedProduct.out_of_stock_at) }})
+              </span>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="stockInput">Số Lượng Tồn Kho Mới *</label>
+            <label for="stockInput">Số Lượng Hàng Mới *</label>
             <input
               id="stockInput"
               type="number"
@@ -376,8 +437,8 @@ const activeFilterText = computed(() => {
   else if (sortBy.value === 'name_desc') parts.push('tên Z → A');
   else if (sortBy.value === 'price_asc') parts.push('giá tăng dần');
   else if (sortBy.value === 'price_desc') parts.push('giá giảm dần');
-  else if (sortBy.value === 'stock_asc') parts.push('tồn kho ít → nhiều');
-  else if (sortBy.value === 'stock_desc') parts.push('tồn kho nhiều → ít');
+  else if (sortBy.value === 'stock_asc') parts.push('số lượng hàng ít → nhiều');
+  else if (sortBy.value === 'stock_desc') parts.push('số lượng hàng nhiều → ít');
 
   return parts.join(' • ');
 });
@@ -501,6 +562,62 @@ async function fetchCategories() {
 function getCategoryName(categoryId: number): string {
   const cat = categories.value.find((c) => c.id === categoryId);
   return cat ? cat.name : `#${categoryId}`;
+}
+
+function formatShortDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => (n < 10 ? '0' + n : String(n));
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
+function formatFullDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => (n < 10 ? '0' + n : String(n));
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  const seconds = pad(d.getSeconds());
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+}
+
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
+
+  if (diffSec < 60) return 'Vừa xong';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} ngày trước`;
+
+  const pad = (n: number) => (n < 10 ? '0' + n : String(n));
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+function getStockActionInfo(prod: Product): { label: string; cls: string } {
+  if (prod.stock === 0 || prod.last_stock_action === 'OUT_OF_STOCK') {
+    return { label: 'Hết hàng', cls: 'status-out' };
+  }
+  if (prod.last_stock_action === 'SOLD') {
+    return { label: 'Đã bán', cls: 'status-sold' };
+  }
+  return { label: 'Thêm hàng', cls: 'status-restock' };
 }
 
 async function fetchProducts(page = 1) {
@@ -1308,5 +1425,69 @@ onUnmounted(() => {
 }
 .btn-cancel:hover {
   background: #475569;
+}
+
+/* Stock time column styling */
+.stock-time-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  line-height: 1.25;
+}
+
+.stock-time-date {
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  color: #e2e8f0;
+}
+
+.stock-update-line {
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.stock-action-text {
+  font-weight: 600;
+  font-size: 0.72rem;
+}
+
+.status-restock {
+  color: #4ade80;
+}
+
+.status-sold {
+  color: #38bdf8;
+}
+
+.status-out {
+  color: #f87171;
+}
+
+.stock-action-sep {
+  opacity: 0.45;
+  color: #64748b;
+  font-size: 0.65rem;
+}
+
+.stock-update-text {
+  color: #94a3b8;
+}
+
+.text-restock {
+  color: #86efac;
+}
+
+.text-out {
+  color: #fca5a5 !important;
+}
+
+.info-value-time {
+  font-size: 0.82rem;
+  color: #cbd5e1;
 }
 </style>

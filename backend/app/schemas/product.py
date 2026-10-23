@@ -37,6 +37,9 @@ class ProductResponse(ProductBase):
     created_at: datetime
     updated_at: datetime
     deleted_at: Optional[datetime] = None
+    restocked_at: Optional[datetime] = None
+    out_of_stock_at: Optional[datetime] = None
+    last_stock_action: Optional[str] = None
 
 
 class ProductFilter(BaseModel):
