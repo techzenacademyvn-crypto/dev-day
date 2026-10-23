@@ -24,6 +24,29 @@
       :step="10000"
     />
 
+    <!-- Bộ lọc sản phẩm nổi bật -->
+    <div class="featured-filter-bar">
+      <label class="featured-toggle-label" for="toggle-featured">
+        <div
+          id="toggle-featured"
+          class="toggle-switch"
+          :class="{ active: isFeaturedOnly }"
+          role="switch"
+          :aria-checked="isFeaturedOnly"
+          tabindex="0"
+          @click="toggleFeatured"
+          @keydown.enter="toggleFeatured"
+          @keydown.space.prevent="toggleFeatured"
+        >
+          <div class="toggle-thumb"></div>
+        </div>
+        <span class="toggle-text">
+          <span v-if="isFeaturedOnly" class="toggle-active-text">⭐ Chỉ sản phẩm nổi bật</span>
+          <span v-else>Chỉ hiển thị sản phẩm nổi bật</span>
+        </span>
+      </label>
+    </div>
+
     <!-- 3. Bộ lọc nhanh tình trạng tồn kho -->
     <div class="stock-filter-bar">
       <div class="stock-tabs">
@@ -92,15 +115,8 @@
               <div class="empty-filter-box">
                 <span class="empty-icon">📦</span>
                 <p class="empty-msg">Không tìm thấy sản phẩm nào phù hợp bộ lọc</p>
-                <button @click="resetPriceFilter" class="btn-reset-inline">
-                  🔄 Đặt lại khoảng giá
-                </button>
-                <button
-                  v-if="searchKeyword || selectedCategoryId !== null"
-                  @click="resetFilters"
-                  class="btn-reset-empty"
-                >
-                  Xóa bộ lọc tìm kiếm
+                <button @click="resetAllFilters" class="btn-reset-inline">
+                  🔄 Đặt lại tất cả bộ lọc
                 </button>
               </div>
             </td>
@@ -188,6 +204,7 @@ const categoryMap = ref<Record<number, string>>({});
 // State bộ lọc tìm kiếm và danh mục
 const searchKeyword = ref('');
 const selectedCategoryId = ref<number | null>(null);
+const isFeaturedOnly = ref(false);
 
 // Lấy danh mục để hiển thị tên trên bảng
 async function fetchCategoriesMap() {
@@ -319,6 +336,7 @@ async function fetchProducts(page = 1) {
     if (searchKeyword.value) params.search = searchKeyword.value;
     if (selectedCategoryId.value !== null) params.category_id = selectedCategoryId.value;
     if (selectedStockTab.value !== 'all') params.stock_status = selectedStockTab.value;
+    if (isFeaturedOnly.value) params.is_featured = true;
 
     const res = await api.get('/products', { params });
     if (res.data.success) {
@@ -344,15 +362,23 @@ function handleFilterChange(payload: { search: string; categoryId: number | null
   fetchProducts(1);
 }
 
+function toggleFeatured() {
+  isFeaturedOnly.value = !isFeaturedOnly.value;
+  currentPage.value = 1;
+  fetchProducts(1);
+}
+
 // Chuyển trang
 function changePage(page: number) {
   fetchProducts(page);
 }
 
-// Xóa tất cả bộ lọc tìm kiếm
-function resetFilters() {
+function resetAllFilters() {
   searchKeyword.value = '';
   selectedCategoryId.value = null;
+  selectedStockTab.value = 'all';
+  isFeaturedOnly.value = false;
+  resetPriceFilter();
   currentPage.value = 1;
   fetchProducts(1);
 }
@@ -416,6 +442,67 @@ onMounted(() => {
 
 .btn-primary:hover {
   background: #0369a1;
+}
+
+/* Bộ lọc sản phẩm nổi bật */
+.featured-filter-bar {
+  display: flex;
+  align-items: center;
+  margin: 0.25rem 0 1rem;
+}
+
+.featured-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: #334155;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.25s ease;
+}
+
+.toggle-switch:focus-visible {
+  border-color: #38bdf8;
+}
+
+.toggle-switch.active {
+  background: #0284c7;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.25s ease;
+}
+
+.toggle-switch.active .toggle-thumb {
+  transform: translateX(20px);
+}
+
+.toggle-text {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.toggle-active-text {
+  color: #facc15;
+  font-weight: 600;
 }
 
 .error-banner {

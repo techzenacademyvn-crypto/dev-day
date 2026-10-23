@@ -47,6 +47,29 @@ def list_products(
 
 
 @router.get(
+    "/featured",
+    response_model=ApiResponse[PageResponse[ProductResponse]],
+    summary="Danh sách sản phẩm theo sản phẩm nổi bật (Phân trang và lọc is_featured)",
+)
+def list_featured_products(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    is_featured: Optional[bool] = Query(default=None, description="Lọc sản phẩm nổi bật (True/False/None)"),
+    db: Session = Depends(get_db),
+):
+    items, total = ProductService.get_featured_list(
+        db, page=page, page_size=page_size, is_featured=is_featured
+    )
+    page_data = PageResponse.create(
+        items=[ProductResponse.model_validate(item) for item in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+    return ApiResponse(data=page_data, message="Lấy danh sách sản phẩm thành công")
+
+
+@router.get(
     "/{product_id}",
     response_model=ApiResponse[ProductResponse],
     summary="Chi tiết sản phẩm",

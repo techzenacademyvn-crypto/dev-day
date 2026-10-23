@@ -2,10 +2,11 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple, List
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate, ProductFilter
-from app.core.exceptions import NotFoundException, BadRequestException
+from app.core.exceptions import NotFoundException, BadRequestException, AppException
 from app.modules.products.search import build_search_expressions
 
 
@@ -77,6 +78,43 @@ class ProductService:
         total = query.count()
         items = query.offset((page - 1) * page_size).limit(page_size).all()
         return items, total
+
+    @staticmethod
+    def get_featured_list(
+        db: Session,
+        page: int = 1,
+        page_size: int = 20,
+        is_featured: Optional[bool] = None,
+    ) -> Tuple[List[Product], int]:
+        """Lấy danh sách sản phẩm theo sản phẩm nổi bật với phân trang."""
+        try:
+            query = db.query(Product).filter(Product.deleted_at.is_(None))
+
+            if is_featured is not None:
+                query = query.filter(Product.is_featured == is_featured)
+
+            total = query.count()
+            items = (
+                query.order_by(Product.id.asc())
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+                .all()
+            )
+            return items, total
+        except AppException:
+            raise
+        except SQLAlchemyError as exc:
+            raise AppException(
+                message="Lỗi truy vấn cơ sở dữ liệu khi lấy danh sách sản phẩm nổi bật",
+                status_code=500,
+                details=str(exc),
+            )
+        except Exception as exc:
+            raise AppException(
+                message="Đã xảy ra lỗi không xác định khi lấy danh sách sản phẩm nổi bật",
+                status_code=500,
+                details=str(exc),
+            )
 
     @staticmethod
     def get_by_id(db: Session, product_id: int) -> Product:
