@@ -18,8 +18,34 @@ class ProductService:
         """Lấy danh sách sản phẩm, 20 sản phẩm mỗi trang."""
         query = db.query(Product).filter(Product.deleted_at.is_(None))
 
+        if filters:
+            if filters.min_price is not None:
+                query = query.filter(Product.price >= filters.min_price)
+            if filters.max_price is not None:
+                query = query.filter(Product.price <= filters.max_price)
+
         total = query.count()
-        items = query.order_by(Product.id.asc()).offset((page - 1) * page_size).limit(page_size).all()
+
+        # Xử lý sắp xếp
+        if filters and filters.sort_by:
+            if filters.sort_by == "name_asc":
+                query = query.order_by(Product.name.asc(), Product.id.asc())
+            elif filters.sort_by == "name_desc":
+                query = query.order_by(Product.name.desc(), Product.id.asc())
+            elif filters.sort_by == "price_asc":
+                query = query.order_by(Product.price.asc(), Product.id.asc())
+            elif filters.sort_by == "price_desc":
+                query = query.order_by(Product.price.desc(), Product.id.asc())
+            elif filters.sort_by == "stock_asc":
+                query = query.order_by(Product.stock.asc(), Product.id.asc())
+            elif filters.sort_by == "stock_desc":
+                query = query.order_by(Product.stock.desc(), Product.id.asc())
+            else:
+                query = query.order_by(Product.id.asc())
+        else:
+            query = query.order_by(Product.id.asc())
+
+        items = query.offset((page - 1) * page_size).limit(page_size).all()
         return items, total
 
     @staticmethod
