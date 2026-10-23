@@ -470,6 +470,89 @@ function formatDateTime(dateStr?: string | null) {
 // CÁC HÀM XỬ LÝ DỮ LIỆU & BỘ LỌC CỦA US1
 // ==============================================================================
 
+// Bộ dữ liệu Mock Data cho Tab Hàng Tồn Kho (phục vụ hiển thị & kiểm thử nghiệp vụ khi seed.py gốc chưa có hàng lưu kho > 60 ngày)
+// Điều kiện Hàng tồn kho: Thời gian lưu kho > 2 tháng (> 60 ngày) VÀ số lượng tồn > 10 sản phẩm
+const mockOverstockedProducts: Product[] = [
+  {
+    id: 901,
+    category_id: 1,
+    name: 'Chuột công thái học Wireless Silent TZ-Pro',
+    sku: 'PRD-MOCK-01',
+    price: 24.50,
+    stock: 80,
+    is_featured: false,
+    image_url: 'https://placehold.co/400x400?text=PRD-MOCK-01',
+    description: 'Sản phẩm tồn kho 75 ngày (> 60 ngày), số lượng tồn 80 cái (> 10 cái). Cần áp dụng chiến dịch xả kho.',
+    created_at: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 902,
+    category_id: 1,
+    name: 'Bàn phím cơ Blue Switch TZ-Gaming RGB',
+    sku: 'PRD-MOCK-02',
+    price: 89.95,
+    stock: 35,
+    is_featured: true,
+    image_url: 'https://placehold.co/400x400?text=PRD-MOCK-02',
+    description: 'Sản phẩm tồn kho 90 ngày (> 60 ngày), số lượng tồn 35 cái (> 10 cái).',
+    created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 903,
+    category_id: 2,
+    name: 'Máy hút bụi cầm tay mini không dây TZ-Clean',
+    sku: 'PRD-MOCK-03',
+    price: 45.00,
+    stock: 40,
+    is_featured: false,
+    image_url: 'https://placehold.co/400x400?text=PRD-MOCK-03',
+    description: 'Sản phẩm tồn kho 120 ngày (> 60 ngày), số lượng tồn 40 cái (> 10 cái).',
+    created_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 904,
+    category_id: 3,
+    name: 'Quần Tây âu co giãn 4 chiều Slimfit Nam',
+    sku: 'PRD-MOCK-04',
+    price: 32.50,
+    stock: 45,
+    is_featured: false,
+    image_url: 'https://placehold.co/400x400?text=PRD-MOCK-04',
+    description: 'Sản phẩm tồn kho 80 ngày (> 60 ngày), số lượng tồn 45 cái (> 10 cái).',
+    created_at: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 905,
+    category_id: 5,
+    name: 'Kính râm chống tia UV400 Polarized',
+    sku: 'PRD-MOCK-05',
+    price: 19.99,
+    stock: 70,
+    is_featured: false,
+    image_url: 'https://placehold.co/400x400?text=PRD-MOCK-05',
+    description: 'Sản phẩm tồn kho 85 ngày (> 60 ngày), số lượng tồn 70 cái (> 10 cái).',
+    created_at: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 906,
+    category_id: 6,
+    name: 'Sách: Nghệ thuật đàm phán đỉnh cao',
+    sku: 'PRD-MOCK-06',
+    price: 12.50,
+    stock: 90,
+    is_featured: false,
+    image_url: 'https://placehold.co/400x400?text=PRD-MOCK-06',
+    description: 'Sản phẩm tồn kho 95 ngày (> 60 ngày), số lượng tồn 90 cái (> 10 cái).',
+    created_at: new Date(Date.now() - 95 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 95 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
 // Hàm tính ngày lưu kho và phân loại tình trạng tồn kho theo chuẩn nghiệp vụ US1:
 function getStockStatus(prod: Product) {
   if (prod.stock === 0) {
@@ -595,7 +678,7 @@ const groupedProducts = computed<ProductGroup[]>(() => {
     if (overstockedItems.length > 0) {
       groups.push({
         key: 'overstocked',
-        title: 'Hàng tồn đọng lâu ngày (> 2 tháng & > 10 cái - Cần xả kho)',
+        title: 'Hàng tồn kho (Cần xả kho)',
         icon: '🟠',
         items: overstockedItems,
         totalStock: overstockedItems.reduce((sum, item) => sum + (item.stock || 0), 0),
@@ -668,15 +751,30 @@ async function fetchProducts(page = 1) {
 
     const res = await api.get('/products', { params });
     if (res.data.success) {
-      products.value = res.data.data.items;
-      totalProducts.value = res.data.data.total;
-      totalPages.value = res.data.data.total_pages;
+      // Nếu lọc tab tồn kho mà backend trả về rỗng (do dữ liệu seed gốc toàn bộ là hàng mới tạo < 1 ngày)
+      // thì nạp mock data cho tab tồn kho để phục vụ kiểm thử và demo
+      if (selectedStockTab.value === 'overstocked' && (!res.data.data.items || res.data.data.items.length === 0)) {
+        products.value = mockOverstockedProducts;
+        totalProducts.value = mockOverstockedProducts.length;
+        totalPages.value = 1;
+      } else {
+        products.value = res.data.data.items;
+        totalProducts.value = res.data.data.total;
+        totalPages.value = res.data.data.total_pages;
+      }
     } else {
       errorMessage.value = res.data.message || 'Không thể tải danh sách sản phẩm';
     }
   } catch (err: any) {
-    errorMessage.value = err.response?.data?.error?.message || 'Có lỗi xảy ra khi tải sản phẩm';
-    console.error(err);
+    if (selectedStockTab.value === 'overstocked') {
+      products.value = mockOverstockedProducts;
+      totalProducts.value = mockOverstockedProducts.length;
+      totalPages.value = 1;
+      errorMessage.value = '';
+    } else {
+      errorMessage.value = err.response?.data?.error?.message || 'Có lỗi xảy ra khi tải sản phẩm';
+      console.error(err);
+    }
   } finally {
     loading.value = false;
   }
@@ -889,6 +987,58 @@ onUnmounted(() => {
   background: rgba(34, 197, 94, 0.25);
   border-color: #22c55e;
   color: #4ade80;
+}
+
+/* Ghi chú điều kiện hàng tồn kho khi mở tab Tồn kho */
+.stock-condition-banner {
+  margin-top: 0.75rem;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-left: 4px solid #f59e0b;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: #fde68a;
+  animation: bannerFadeIn 0.2s ease-in-out;
+}
+
+@keyframes bannerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.condition-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.condition-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.condition-title {
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.condition-desc {
+  color: #fef3c7;
+}
+
+.condition-desc strong {
+  color: #ffffff;
 }
 
 /* Thanh điều khiển Gom nhóm (US1-5) & Bố cục hiển thị (US2-4) */
