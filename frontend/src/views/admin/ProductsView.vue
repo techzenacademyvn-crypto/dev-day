@@ -13,14 +13,46 @@
       </div>
     </div>
 
-    <!-- Bộ lọc tìm kiếm theo khoảng giá và sắp xếp -->
+    <!-- Bộ lọc tổng hợp: Tìm kiếm, Danh mục, Khoảng giá và Sắp xếp -->
     <div class="filter-card">
       <div class="filter-header">
-        <span class="filter-title">🔍 Lọc sản phẩm theo khoảng giá</span>
+        <span class="filter-title">🔍 Bộ lọc & Tìm kiếm sản phẩm</span>
       </div>
 
       <div class="filter-controls">
-        <div class="price-input-wrapper">
+        <!-- Ô tìm kiếm tên sản phẩm -->
+        <div class="filter-item search-wrapper">
+          <label class="input-label" for="product-search-input">Tìm kiếm</label>
+          <div class="search-input-group">
+            <input
+              id="product-search-input"
+              type="text"
+              v-model="searchQuery"
+              @keyup.enter="handleFilter"
+              placeholder="Nhập tên sản phẩm..."
+              class="form-control search-input"
+            />
+          </div>
+        </div>
+
+        <!-- Chọn danh mục -->
+        <div class="filter-item">
+          <label class="input-label" for="category-select">Danh mục</label>
+          <select
+            id="category-select"
+            v-model="selectedCategoryId"
+            @change="handleFilter"
+            class="form-control select-control"
+          >
+            <option value="">-- Tất cả danh mục --</option>
+            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Khoảng giá tối thiểu -->
+        <div class="filter-item price-input-wrapper">
           <label class="input-label" for="min-price">Giá tối thiểu ($)</label>
           <div class="input-with-prefix">
             <span class="currency-symbol">$</span>
@@ -41,7 +73,8 @@
 
         <span class="range-divider">—</span>
 
-        <div class="price-input-wrapper">
+        <!-- Khoảng giá tối đa -->
+        <div class="filter-item price-input-wrapper">
           <label class="input-label" for="max-price">Giá tối đa ($)</label>
           <div class="input-with-prefix">
             <span class="currency-symbol">$</span>
@@ -60,13 +93,14 @@
           </div>
         </div>
 
-        <div class="sort-wrapper">
+        <!-- Sắp xếp -->
+        <div class="filter-item sort-wrapper">
           <label class="input-label" for="select-sort">Sắp xếp theo</label>
           <select
             id="select-sort"
             v-model="sortBy"
             @change="handleSortChange"
-            class="form-control select-sort"
+            class="form-control select-control"
           >
             <option value="">Mặc định (ID)</option>
             <option value="name_asc">🔤 Tên: A → Z (Alphabet)</option>
@@ -78,12 +112,13 @@
           </select>
         </div>
 
+        <!-- Nhóm nút bấm -->
         <div class="filter-btn-group">
           <button @click="handleFilter" class="btn-primary btn-search" id="btn-search-price">
-            Lọc
+            Lọc & Tìm
           </button>
           <button
-            v-if="isFilterActive || minPriceInput || maxPriceInput || sortBy"
+            v-if="isFilterActive"
             @click="handleReset"
             class="btn-reset"
             id="btn-reset-price"
@@ -93,15 +128,15 @@
         </div>
       </div>
 
-      <!-- Thông báo khi min > max hoặc lỗi nhập liệu -->
+      <!-- Thông báo lỗi khi min > max -->
       <div v-if="validationWarning" class="filter-warning">
         ⚠️ {{ validationWarning }}
       </div>
 
-      <!-- Badge hiển thị khoảng giá và sắp xếp đang áp dụng -->
+      <!-- Badge hiển thị bộ lọc đang áp dụng -->
       <div v-if="isFilterActive && !validationWarning" class="active-filter-badge">
         <span>Đang áp dụng: <strong>{{ activeFilterText }}</strong></span>
-        <button @click="handleReset" class="btn-clear-tag" title="Xóa bộ lọc và sắp xếp">✕</button>
+        <button @click="handleReset" class="btn-clear-tag" title="Xóa toàn bộ bộ lọc">✕</button>
       </div>
     </div>
 
@@ -156,8 +191,8 @@
                 <div class="empty-icon">🔍</div>
                 <h3 class="empty-title">Không tìm thấy sản phẩm nào</h3>
                 <p v-if="isFilterActive" class="empty-desc">
-                  Không có sản phẩm nào thuộc khoảng giá <strong>{{ activeFilterText }}</strong>.
-                  <br />Bạn có thể thử nhập khoảng giá khác hoặc bấm đặt lại bộ lọc.
+                  Không có sản phẩm nào phù hợp với bộ lọc đang chọn: <strong>{{ activeFilterText }}</strong>.
+                  <br />Bạn có thể thử tìm từ khóa khác hoặc bấm đặt lại bộ lọc.
                 </p>
                 <p v-else class="empty-desc">Danh sách sản phẩm hiện đang trống.</p>
                 <button v-if="isFilterActive" @click="handleReset" class="btn-primary btn-sm btn-empty-reset">
@@ -169,10 +204,13 @@
           <tr v-for="prod in products" :key="prod.id" v-else>
             <td><code>{{ prod.sku }}</code></td>
             <td class="font-medium">{{ prod.name }}</td>
-            <td>#{{ prod.category_id }}</td>
+            <td>
+              <span class="category-pill" :title="'ID: #' + prod.category_id">
+                {{ getCategoryName(prod.category_id) }}
+              </span>
+            </td>
             <td class="price-tag">${{ Number(prod.price).toFixed(2) }}</td>
             <td>
-              <!-- Hiển thị tồn kho -->
               <StockBadge :stock="prod.stock" />
             </td>
             <td>
@@ -197,7 +235,7 @@
     </div>
 
     <!-- Phân trang -->
-    <div class="pagination-bar">
+    <div v-if="totalProducts > 0" class="pagination-bar">
       <span>Trang {{ currentPage }} / {{ totalPages }} (Tổng cộng {{ totalProducts }} sản phẩm)</span>
       <div class="pagination-btns">
         <button
@@ -277,17 +315,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import api from '../../lib/api';
-import type { Product } from '../../types';
+import type { Product, Category } from '../../types';
 import StockBadge from '../../components/StockBadge.vue';
 
 const products = ref<Product[]>([]);
+const categories = ref<Category[]>([]);
 const totalProducts = ref(0);
 const currentPage = ref(1);
 const totalPages = ref(1);
 const loading = ref(false);
 const errorMessage = ref<string | null>(null);
 
-// Trạng thái modal cập nhật tồn kho
+// Modal tồn kho
 const showStockModal = ref(false);
 const selectedProduct = ref<Product | null>(null);
 const stockFormValue = ref<number>(0);
@@ -297,7 +336,12 @@ const modalError = ref<string | null>(null);
 
 const isFeaturedSorted = ref(false);
 
-// Filter states
+// Tìm kiếm & Danh mục
+const searchQuery = ref('');
+const appliedSearch = ref('');
+const selectedCategoryId = ref<number | ''>('');
+
+// Bộ lọc giá & Sắp xếp
 const minPriceInput = ref<string>('');
 const maxPriceInput = ref<string>('');
 const appliedMinPrice = ref<string>('');
@@ -306,91 +350,71 @@ const sortBy = ref<string>('');
 const validationWarning = ref<string>('');
 
 const isFilterActive = computed(() => {
-  return appliedMinPrice.value !== '' || appliedMaxPrice.value !== '' || sortBy.value !== '';
+  return (
+    appliedSearch.value.trim() !== '' ||
+    selectedCategoryId.value !== '' ||
+    appliedMinPrice.value !== '' ||
+    appliedMaxPrice.value !== '' ||
+    sortBy.value !== ''
+  );
 });
 
 const activeFilterText = computed(() => {
   const parts: string[] = [];
-  if (appliedMinPrice.value !== '' && appliedMaxPrice.value !== '') {
-    parts.push(`từ $${Number(appliedMinPrice.value).toFixed(2)} đến $${Number(appliedMaxPrice.value).toFixed(2)}`);
-  } else if (appliedMinPrice.value !== '') {
-    parts.push(`từ $${Number(appliedMinPrice.value).toFixed(2)} trở lên`);
-  } else if (appliedMaxPrice.value !== '') {
-    parts.push(`dưới hoặc bằng $${Number(appliedMaxPrice.value).toFixed(2)}`);
+
+  if (appliedSearch.value.trim() !== '') {
+    parts.push(`Từ khóa: "${appliedSearch.value.trim()}"`);
   }
 
-  if (sortBy.value === 'name_asc') {
-    parts.push('tên A → Z 🔤');
-  } else if (sortBy.value === 'name_desc') {
-    parts.push('tên Z → A 🔤');
-  } else if (sortBy.value === 'price_asc') {
-    parts.push('giá tăng dần 📈');
-  } else if (sortBy.value === 'price_desc') {
-    parts.push('giá giảm dần 📉');
-  } else if (sortBy.value === 'stock_asc') {
-    parts.push('tồn kho ít → nhiều 📦');
-  } else if (sortBy.value === 'stock_desc') {
-    parts.push('tồn kho nhiều → ít 📦');
+  if (selectedCategoryId.value !== '') {
+    parts.push(`Danh mục: ${getCategoryName(Number(selectedCategoryId.value))}`);
   }
+
+  if (appliedMinPrice.value !== '' && appliedMaxPrice.value !== '') {
+    parts.push(`giá $${Number(appliedMinPrice.value).toFixed(2)} - $${Number(appliedMaxPrice.value).toFixed(2)}`);
+  } else if (appliedMinPrice.value !== '') {
+    parts.push(`giá từ $${Number(appliedMinPrice.value).toFixed(2)} trở lên`);
+  } else if (appliedMaxPrice.value !== '') {
+    parts.push(`giá ≤ $${Number(appliedMaxPrice.value).toFixed(2)}`);
+  }
+
+  if (sortBy.value === 'name_asc') parts.push('tên A → Z');
+  else if (sortBy.value === 'name_desc') parts.push('tên Z → A');
+  else if (sortBy.value === 'price_asc') parts.push('giá tăng dần');
+  else if (sortBy.value === 'price_desc') parts.push('giá giảm dần');
+  else if (sortBy.value === 'stock_asc') parts.push('tồn kho ít → nhiều');
+  else if (sortBy.value === 'stock_desc') parts.push('tồn kho nhiều → ít');
 
   return parts.join(' • ');
 });
 
 function handlePriceKeydown(event: KeyboardEvent) {
-  const allowedControlKeys = [
-    'Backspace',
-    'Tab',
-    'Delete',
-    'ArrowLeft',
-    'ArrowRight',
-    'ArrowUp',
-    'ArrowDown',
-    'Home',
-    'End',
-    'Enter',
+  const allowed = [
+    'Backspace', 'Tab', 'Delete',
+    'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+    'Home', 'End', 'Enter',
   ];
-
-  if (allowedControlKeys.includes(event.key)) {
-    return;
-  }
-
-  if (event.ctrlKey || event.metaKey) {
-    return;
-  }
-
+  if (allowed.includes(event.key) || event.ctrlKey || event.metaKey) return;
   if (['e', 'E', '+', '-'].includes(event.key)) {
     event.preventDefault();
     return;
   }
-
   if (event.key === '.') {
     const input = event.target as HTMLInputElement;
-    if (input && input.value.includes('.')) {
-      event.preventDefault();
-    }
+    if (input && input.value.includes('.')) event.preventDefault();
     return;
   }
-
-  if (!/^[0-9]$/.test(event.key)) {
-    event.preventDefault();
-  }
+  if (!/^[0-9]$/.test(event.key)) event.preventDefault();
 }
 
 function sanitizePriceInput(field: 'min' | 'max') {
   const current = field === 'min' ? minPriceInput.value : maxPriceInput.value;
   if (!current) return;
-
   let sanitized = current.replace(/[^0-9.]/g, '');
   const parts = sanitized.split('.');
-  if (parts.length > 2) {
-    sanitized = parts[0] + '.' + parts.slice(1).join('');
-  }
-
-  if (field === 'min') {
-    minPriceInput.value = sanitized;
-  } else {
-    maxPriceInput.value = sanitized;
-  }
+  if (parts.length > 2) sanitized = parts[0] + '.' + parts.slice(1).join('');
+  if (field === 'min') minPriceInput.value = sanitized;
+  else maxPriceInput.value = sanitized;
 }
 
 function handlePricePaste(event: ClipboardEvent, targetField: 'min' | 'max') {
@@ -398,14 +422,9 @@ function handlePricePaste(event: ClipboardEvent, targetField: 'min' | 'max') {
   const text = event.clipboardData?.getData('text') || '';
   let sanitized = text.replace(/[^0-9.]/g, '');
   const parts = sanitized.split('.');
-  if (parts.length > 2) {
-    sanitized = parts[0] + '.' + parts.slice(1).join('');
-  }
-  if (targetField === 'min') {
-    minPriceInput.value = sanitized;
-  } else {
-    maxPriceInput.value = sanitized;
-  }
+  if (parts.length > 2) sanitized = parts[0] + '.' + parts.slice(1).join('');
+  if (targetField === 'min') minPriceInput.value = sanitized;
+  else maxPriceInput.value = sanitized;
 }
 
 function handleFilter() {
@@ -423,15 +442,19 @@ function handleFilter() {
     return;
   }
   if (min !== null && max !== null && min > max) {
-    validationWarning.value = `Giá tối thiểu ($${min}) đang lớn hơn giá tối đa ($${max}). Không có sản phẩm nào thuộc khoảng giá này.`;
+    validationWarning.value = `Giá tối thiểu ($${min}) đang lớn hơn giá tối đa ($${max}).`;
   }
 
+  appliedSearch.value = searchQuery.value;
   appliedMinPrice.value = minPriceInput.value;
   appliedMaxPrice.value = maxPriceInput.value;
   fetchProducts(1);
 }
 
 function handleReset() {
+  searchQuery.value = '';
+  appliedSearch.value = '';
+  selectedCategoryId.value = '';
   minPriceInput.value = '';
   maxPriceInput.value = '';
   appliedMinPrice.value = '';
@@ -456,6 +479,22 @@ function toggleSort(field: 'name' | 'price' | 'stock') {
   fetchProducts(1);
 }
 
+async function fetchCategories() {
+  try {
+    const res = await api.get('/categories', { params: { page: 1, page_size: 100 } });
+    if (res.data.success) {
+      categories.value = res.data.data.items;
+    }
+  } catch (err) {
+    console.error('Lỗi tải danh mục:', err);
+  }
+}
+
+function getCategoryName(categoryId: number): string {
+  const cat = categories.value.find((c) => c.id === categoryId);
+  return cat ? cat.name : `#${categoryId}`;
+}
+
 async function fetchProducts(page = 1) {
   loading.value = true;
   errorMessage.value = null;
@@ -465,6 +504,12 @@ async function fetchProducts(page = 1) {
       page,
       page_size: 20,
     };
+    if (appliedSearch.value.trim()) {
+      params.search = appliedSearch.value.trim();
+    }
+    if (selectedCategoryId.value !== '') {
+      params.category_id = Number(selectedCategoryId.value);
+    }
     if (appliedMinPrice.value !== '') {
       params.min_price = appliedMinPrice.value;
     }
@@ -485,7 +530,7 @@ async function fetchProducts(page = 1) {
       errorMessage.value = res.data.message || 'Không thể lấy dữ liệu sản phẩm.';
     }
   } catch (err: any) {
-    console.error('Lỗi khi tải danh sách sản phẩm:', err);
+    console.error('Lỗi tải danh sách sản phẩm:', err);
     errorMessage.value =
       err.response?.data?.error?.message ||
       'Không thể kết nối đến máy chủ Backend. Vui lòng kiểm tra lại dịch vụ.';
@@ -539,12 +584,10 @@ async function handleStockSubmit() {
     stockFormError.value = 'Vui lòng nhập số lượng hợp lệ.';
     return;
   }
-
   if (stockFormValue.value < 0) {
     stockFormError.value = 'Số lượng tồn kho không được là số âm (>= 0).';
     return;
   }
-
   if (!Number.isInteger(stockFormValue.value)) {
     stockFormError.value = 'Số lượng tồn kho phải là số nguyên.';
     return;
@@ -557,7 +600,6 @@ async function handleStockSubmit() {
     const res = await api.put(`/products/${selectedProduct.value.id}`, {
       stock: stockFormValue.value,
     });
-
     if (res.data.success) {
       closeStockModal();
       await fetchProducts(currentPage.value);
@@ -565,7 +607,7 @@ async function handleStockSubmit() {
       modalError.value = res.data.message || 'Cập nhật thất bại.';
     }
   } catch (err: any) {
-    console.error('Lỗi khi cập nhật tồn kho:', err);
+    console.error('Lỗi cập nhật tồn kho:', err);
     modalError.value =
       err.response?.data?.error?.message ||
       err.response?.data?.detail?.[0]?.msg ||
@@ -587,6 +629,7 @@ async function handleDelete(id: number) {
 }
 
 onMounted(() => {
+  fetchCategories();
   fetchProducts();
 });
 </script>
@@ -652,6 +695,157 @@ onMounted(() => {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Filter Card */
+.filter-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.filter-header {
+  margin-bottom: 0.85rem;
+}
+.filter-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.filter-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.search-wrapper {
+  flex: 1;
+  min-width: 200px;
+}
+.input-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+.form-control {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.375rem;
+  color: #f8fafc;
+  font-size: 0.875rem;
+  padding: 0.55rem 0.85rem;
+  outline: none;
+  height: 38px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-control:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+}
+.search-input {
+  width: 100%;
+}
+.select-control {
+  cursor: pointer;
+  min-width: 160px;
+}
+.price-input-wrapper {
+  width: 130px;
+}
+.input-with-prefix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.currency-symbol {
+  position: absolute;
+  left: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+  pointer-events: none;
+  font-size: 0.9rem;
+}
+.price-input {
+  width: 100%;
+  padding-left: 1.65rem;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.price-input::-webkit-outer-spin-button,
+.price-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.range-divider {
+  color: #64748b;
+  padding: 0 0.15rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+.filter-btn-group {
+  display: flex;
+  gap: 0.5rem;
+}
+.btn-search {
+  padding: 0.55rem 1.25rem;
+  font-size: 0.875rem;
+  height: 38px;
+}
+.btn-reset {
+  background: #334155;
+  color: #cbd5e1;
+  border: 1px solid #475569;
+  padding: 0.55rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  height: 38px;
+  transition: all 0.2s;
+}
+.btn-reset:hover {
+  background: #475569;
+  color: #f8fafc;
+}
+.filter-warning {
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  color: #facc15;
+  border-radius: 0.375rem;
+  font-size: 0.85rem;
+}
+.active-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  background: rgba(2, 132, 199, 0.15);
+  border: 1px solid rgba(2, 132, 199, 0.35);
+  color: #38bdf8;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.825rem;
+}
+.btn-clear-tag {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0 0.15rem;
+}
+
+/* Table */
 .table-container {
   background: #1e293b;
   border: 1px solid #334155;
@@ -677,6 +871,41 @@ onMounted(() => {
   color: #cbd5e1;
   font-size: 0.9rem;
 }
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+.th-sortable:hover {
+  background-color: #1e293b !important;
+}
+.th-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.sort-badge {
+  font-size: 0.725rem;
+  color: #64748b;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  background: rgba(51, 65, 85, 0.4);
+}
+.sort-badge.sort-active {
+  background: rgba(2, 132, 199, 0.25);
+  color: #38bdf8;
+  font-weight: 700;
+  border: 1px solid rgba(2, 132, 199, 0.4);
+}
+.category-pill {
+  display: inline-block;
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
 .price-tag {
   color: #38bdf8;
   font-weight: 600;
@@ -700,7 +929,6 @@ onMounted(() => {
   border: none;
   cursor: pointer;
   font-weight: 500;
-  transition: opacity 0.2s;
 }
 .btn-stock {
   background: #0284c7;
@@ -725,9 +953,39 @@ onMounted(() => {
 .error-cell {
   color: #f87171;
 }
-.text-muted {
-  color: #64748b;
+.empty-state {
+  padding: 3.5rem 1.5rem !important;
+  text-align: center;
 }
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.6rem;
+  opacity: 0.85;
+}
+.empty-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #f8fafc;
+  margin: 0 0 0.4rem 0;
+}
+.empty-desc {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin: 0;
+  max-width: 480px;
+  line-height: 1.5;
+}
+.btn-empty-reset {
+  margin-top: 1rem;
+}
+
+/* Pagination */
 .pagination-bar {
   display: flex;
   justify-content: space-between;
@@ -747,6 +1005,10 @@ onMounted(() => {
   padding: 0.4rem 0.8rem;
   border-radius: 0.375rem;
   cursor: pointer;
+}
+.btn-page:hover:not(:disabled) {
+  border-color: #38bdf8;
+  color: #38bdf8;
 }
 .btn-page:disabled {
   opacity: 0.4;
@@ -792,7 +1054,6 @@ onMounted(() => {
   color: #94a3b8;
   font-size: 1.5rem;
   cursor: pointer;
-  line-height: 1;
 }
 .modal-body {
   padding: 1.25rem;
@@ -829,18 +1090,6 @@ onMounted(() => {
   font-weight: 600;
   color: #cbd5e1;
 }
-.form-control {
-  background: #0f172a;
-  border: 1px solid #334155;
-  color: #f8fafc;
-  padding: 0.6rem 0.85rem;
-  border-radius: 0.375rem;
-  font-size: 0.95rem;
-}
-.form-control:focus {
-  outline: none;
-  border-color: #0284c7;
-}
 .field-hint {
   color: #94a3b8;
   font-size: 0.75rem;
@@ -875,226 +1124,5 @@ onMounted(() => {
 }
 .btn-cancel:hover {
   background: #475569;
-}
-
-/* Filter Card Styles */
-.filter-card {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 0.5rem;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.5rem;
-}
-.filter-header {
-  margin-bottom: 0.85rem;
-}
-.filter-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #f8fafc;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.filter-controls {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-}
-.price-input-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.input-label {
-  font-size: 0.8rem;
-  color: #94a3b8;
-  font-weight: 500;
-}
-.input-with-prefix {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.currency-symbol {
-  position: absolute;
-  left: 0.75rem;
-  color: #64748b;
-  font-weight: 600;
-  pointer-events: none;
-  font-size: 0.9rem;
-}
-.price-input {
-  width: 150px;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 0.375rem;
-  color: #f8fafc;
-  font-size: 0.9rem;
-  padding: 0.55rem 0.75rem 0.55rem 1.65rem;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-.price-input::-webkit-outer-spin-button,
-.price-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.price-input:focus {
-  border-color: #0284c7;
-  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
-}
-.range-divider {
-  color: #64748b;
-  padding: 0 0.25rem;
-  font-weight: 700;
-  margin-bottom: 0.6rem;
-}
-.filter-btn-group {
-  display: flex;
-  gap: 0.5rem;
-}
-.btn-search {
-  padding: 0.55rem 1.25rem;
-  font-size: 0.875rem;
-  height: 38px;
-  cursor: pointer;
-}
-.btn-reset {
-  background: #334155;
-  color: #cbd5e1;
-  border: 1px solid #475569;
-  padding: 0.55rem 1rem;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  font-size: 0.875rem;
-  cursor: pointer;
-  height: 38px;
-  transition: all 0.2s;
-}
-.btn-reset:hover {
-  background: #475569;
-  color: #f8fafc;
-}
-.filter-warning {
-  margin-top: 0.85rem;
-  padding: 0.65rem 0.85rem;
-  background: rgba(234, 179, 8, 0.12);
-  border: 1px solid rgba(234, 179, 8, 0.35);
-  color: #facc15;
-  border-radius: 0.375rem;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.active-filter-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.85rem;
-  background: rgba(2, 132, 199, 0.15);
-  border: 1px solid rgba(2, 132, 199, 0.35);
-  color: #38bdf8;
-  padding: 0.35rem 0.85rem;
-  border-radius: 9999px;
-  font-size: 0.825rem;
-}
-.btn-clear-tag {
-  background: none;
-  border: none;
-  color: #38bdf8;
-  cursor: pointer;
-  font-weight: 700;
-  padding: 0 0.15rem;
-  font-size: 0.85rem;
-  line-height: 1;
-}
-.btn-clear-tag:hover {
-  color: #fff;
-}
-.empty-state {
-  padding: 3.5rem 1.5rem !important;
-  text-align: center;
-}
-.empty-state-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.6rem;
-  opacity: 0.85;
-}
-.empty-title {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #f8fafc;
-  margin: 0 0 0.4rem 0;
-}
-.empty-desc {
-  color: #94a3b8;
-  font-size: 0.9rem;
-  margin: 0;
-  max-width: 480px;
-  line-height: 1.5;
-}
-.btn-empty-reset {
-  margin-top: 1rem;
-}
-
-/* Sorting Styles */
-.sort-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.select-sort {
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 0.375rem;
-  color: #f8fafc;
-  font-size: 0.875rem;
-  padding: 0.55rem 0.85rem;
-  outline: none;
-  height: 38px;
-  cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.select-sort:focus {
-  border-color: #0284c7;
-  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
-}
-.th-sortable {
-  cursor: pointer;
-  user-select: none;
-  transition: background-color 0.2s;
-}
-.th-sortable:hover {
-  background-color: #1e293b !important;
-}
-.th-content {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.sort-badge {
-  font-size: 0.725rem;
-  color: #64748b;
-  padding: 0.15rem 0.4rem;
-  border-radius: 0.25rem;
-  background: rgba(51, 65, 85, 0.4);
-  transition: all 0.2s;
-}
-.sort-badge.sort-active {
-  background: rgba(2, 132, 199, 0.25);
-  color: #38bdf8;
-  font-weight: 700;
-  border: 1px solid rgba(2, 132, 199, 0.4);
 }
 </style>
