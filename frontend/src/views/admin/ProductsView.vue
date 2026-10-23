@@ -126,12 +126,13 @@
 
       <table class="data-table">
         <colgroup>
-          <col style="width: 6%" />
-          <col style="width: 36%" />
-          <col style="width: 17%" />
+          <col style="width: 5%" />
+          <col style="width: 29%" />
+          <col style="width: 15%" />
+          <col style="width: 11%" />
           <col style="width: 13%" />
           <col style="width: 15%" />
-          <col style="width: 13%" />
+          <col style="width: 12%" />
         </colgroup>
         <thead>
           <tr>
@@ -161,21 +162,22 @@
                 </span>
               </div>
             </th>
+            <th>Người Tạo</th>
             <th class="text-right">Thao Tác</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="text-center py-6 text-muted">Đang tải sản phẩm...</td>
+            <td colspan="7" class="text-center py-6 text-muted">Đang tải sản phẩm...</td>
           </tr>
           <tr v-else-if="errorMessage">
-            <td colspan="6" class="text-center py-6 error-cell">
+            <td colspan="7" class="text-center py-6 error-cell">
               <span>{{ errorMessage }}</span>
               <button @click="fetchProducts(currentPage)" class="btn-sm btn-retry">Thử lại</button>
             </td>
           </tr>
           <tr v-else-if="products.length === 0">
-            <td colspan="6" class="empty-state">
+            <td colspan="7" class="empty-state">
               <div class="empty-state-content">
                 <div class="empty-icon">🔍</div>
                 <h3 class="empty-title">Không tìm thấy sản phẩm nào</h3>
@@ -204,6 +206,15 @@
             <td class="price-tag">${{ Number(prod.price).toFixed(2) }}</td>
             <td>
               <StockBadge :stock="prod.stock" />
+            </td>
+            <td>
+              <div v-if="(prod as any).creator?.full_name" class="creator-badge" :title="(prod as any).creator.email">
+                <span class="creator-avatar">{{ (prod as any).creator.full_name.charAt(0).toUpperCase() }}</span>
+                <span class="creator-name">{{ (prod as any).creator.full_name }}</span>
+              </div>
+              <span v-else class="text-muted creator-system" title="Tạo tự động từ hệ thống">
+                🏷️ Hệ thống
+              </span>
             </td>
             <td class="text-right">
               <div class="action-buttons justify-end">
@@ -1325,5 +1336,50 @@ onUnmounted(() => {
 }
 .btn-cancel:hover {
   background: #475569;
+}
+
+/* Creator column badge styles */
+.creator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid #334155;
+  border-radius: 9999px;
+  padding: 0.2rem 0.6rem 0.2rem 0.25rem;
+  font-size: 0.8rem;
+  max-width: 100%;
+}
+
+.creator-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: #0284c7;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 0.68rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.creator-name {
+  color: #f1f5f9;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.creator-system {
+  font-size: 0.775rem;
+  color: #94a3b8;
+  font-style: italic;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 </style>
