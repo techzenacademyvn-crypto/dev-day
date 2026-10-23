@@ -141,9 +141,9 @@ def get_synonym_variants(query_norm: str) -> List[str]:
 def _token_match_expr(col_norm, token: str):
     """
     Tạo biểu thức khớp từ có kiểm soát ranh giới từ:
-    - Nếu từ ngắn (<= 2 ký tự như 'ao', 'ví'): bắt buộc khớp ranh giới cả 2 đầu \y{token}\y
+    - Nếu từ ngắn (<= 2 ký tự như 'ao', 'ví'): bắt buộc khớp ranh giới cả 2 đầu \\y{token}\\y
       để tránh trường hợp 'ao' bị khớp vào 'cao', 'giao', 'dạo'.
-    - Nếu từ dài hơn 2 ký tự: khớp tiền tố từ \y{token} hoặc nguyên từ.
+    - Nếu từ dài hơn 2 ký tự: khớp tiền tố từ \\y{token} hoặc nguyên từ.
     """
     escaped = re.escape(token)
     if len(token) <= 2:
@@ -161,7 +161,7 @@ def build_search_expressions(
     """
     Xây dựng điều kiện lọc (filter clause) và biểu thức tính điểm xếp hạng (ranking score)
     hoàn toàn tại database.
-    
+
     Thứ tự xếp hạng ưu tiên (Score):
     - 100: Khớp tên chính xác (Exact match)
     - 80:  Khớp cụm từ nguyên vẹn có ranh giới từ (Phrase match)

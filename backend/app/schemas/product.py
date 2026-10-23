@@ -37,6 +37,8 @@ class ProductResponse(ProductBase):
     created_at: datetime
     updated_at: datetime
     deleted_at: Optional[datetime] = None
+    stock_status: Optional[str] = Field(default=None, description="Tình trạng tồn kho: out_of_stock | overstocked | normal")
+    days_in_stock: Optional[int] = Field(default=None, description="Số ngày lưu kho")
 
 
 class ProductFilter(BaseModel):
@@ -45,3 +47,4 @@ class ProductFilter(BaseModel):
     low_stock_threshold: Optional[int] = None
     is_featured: Optional[bool] = None
     sort_by: Optional[str] = None  # "price_asc", "price_desc", "stock_asc", "stock_desc"
+    stock_status: Optional[str] = Field(default=None, description="Lọc tình trạng tồn kho: out_of_stock | overstocked | normal")
