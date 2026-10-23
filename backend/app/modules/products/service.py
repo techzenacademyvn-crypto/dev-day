@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, Tuple, List
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from app.models.product import Product
@@ -15,11 +16,39 @@ class ProductService:
         page_size: int = 20,
         filters: Optional[ProductFilter] = None,
     ) -> Tuple[List[Product], int]:
-        """Lấy danh sách sản phẩm, 20 sản phẩm mỗi trang."""
+        """Lấy danh sách sản phẩm có phân trang và bộ lọc."""
         query = db.query(Product).filter(Product.deleted_at.is_(None))
 
+        if filters:
+            if filters.search and filters.search.strip():
+                term = f"%{filters.search.strip()}%"
+                query = query.filter(
+                    or_(
+                        Product.name.ilike(term),
+                        func.unaccent(Product.name).ilike(func.unaccent(term)),
+                    )
+                )
+            if filters.category_id is not None:
+                query = query.filter(Product.category_id == filters.category_id)
+            if filters.low_stock_threshold is not None:
+                query = query.filter(Product.stock <= filters.low_stock_threshold)
+            if filters.is_featured is not None:
+                query = query.filter(Product.is_featured == filters.is_featured)
+
         total = query.count()
-        items = query.order_by(Product.id.asc()).offset((page - 1) * page_size).limit(page_size).all()
+
+        order_clause = Product.id.asc()
+        if filters and filters.sort_by:
+            if filters.sort_by == "price_asc":
+                order_clause = Product.price.asc()
+            elif filters.sort_by == "price_desc":
+                order_clause = Product.price.desc()
+            elif filters.sort_by == "stock_asc":
+                order_clause = Product.stock.asc()
+            elif filters.sort_by == "stock_desc":
+                order_clause = Product.stock.desc()
+
+        items = query.order_by(order_clause).offset((page - 1) * page_size).limit(page_size).all()
         return items, total
 
     @staticmethod
