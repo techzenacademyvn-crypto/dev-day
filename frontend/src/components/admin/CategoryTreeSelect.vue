@@ -22,6 +22,10 @@
 
     <!-- Dropdown Menu -->
     <div v-if="isOpen" class="tree-select-dropdown">
+      <div class="category-search-box">
+        <input v-model="keyword" type="search" placeholder="Tìm danh mục" aria-label="Tìm danh mục" />
+        <button v-if="keyword" type="button" @click="keyword = ''" aria-label="Xóa từ khóa">×</button>
+      </div>
       <!-- Item: Tất cả danh mục -->
       <div
         class="tree-node-row"
@@ -49,7 +53,7 @@
       </div>
 
       <!-- Danh sách cây danh mục -->
-      <div v-else class="tree-nodes-list">
+      <div v-else-if="treeData.length" class="tree-nodes-list">
         <div
           v-for="cat in treeData"
           :key="cat.id"
@@ -112,6 +116,7 @@
           </div>
         </div>
       </div>
+      <div v-else class="tree-loading">Không tìm thấy danh mục phù hợp</div>
     </div>
   </div>
 </template>
@@ -143,6 +148,11 @@ const rawCategories = ref<CategoryItem[]>([]);
 const loadingCategories = ref(false);
 const categoriesError = ref('');
 const expandedIds = ref<Set<number>>(new Set());
+const keyword = ref('');
+
+function normalize(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').toLowerCase().trim();
+}
 
 // Nhãn hiển thị trên trigger button
 const selectedLabel = computed(() => {
@@ -153,7 +163,10 @@ const selectedLabel = computed(() => {
 
 // Xây dựng cây danh mục từ dữ liệu thực tế
 const treeData = computed<CategoryItem[]>(() => {
-  const items = rawCategories.value;
+  const query = normalize(keyword.value);
+  const items = query
+    ? rawCategories.value.filter((item) => normalize(item.name).includes(query))
+    : rawCategories.value;
   // Kiểm tra nếu có parent_id thực tế
   const hasParent = items.some((item) => item.parent_id !== undefined && item.parent_id !== null);
   if (!hasParent) {
@@ -198,6 +211,7 @@ async function fetchCategories() {
 
 function toggleDropdown() {
   isOpen.value = !isOpen.value;
+  if (!isOpen.value) keyword.value = '';
 }
 
 function toggleExpand(id: number) {
@@ -212,6 +226,7 @@ function selectCategory(id: number | null, _name: string) {
   emit('update:modelValue', id);
   emit('change', id);
   isOpen.value = false;
+  keyword.value = '';
 }
 
 // Đóng dropdown khi click ra ngoài
@@ -305,6 +320,15 @@ onUnmounted(() => {
   z-index: 100;
   padding: 0.35rem 0;
 }
+
+.category-search-box {
+  display: flex;
+  gap: .35rem;
+  padding: .4rem .5rem;
+  border-bottom: 1px solid #334155;
+}
+.category-search-box input { min-width: 0; flex: 1; padding: .45rem .55rem; color: #f8fafc; background: #020617; border: 1px solid #475569; border-radius: .3rem; }
+.category-search-box button { color: #94a3b8; background: transparent; border: 0; cursor: pointer; font-size: 1.1rem; }
 
 .tree-node-row {
   display: flex;

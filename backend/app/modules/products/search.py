@@ -59,6 +59,11 @@ def sql_spaceless_col(column):
     return func.replace(func.replace(sql_normalized_col(column), " ", ""), "-", "")
 
 
+def escape_like_pattern(value: str) -> str:
+    """Escape literal LIKE metacharacters while retaining a bound query parameter."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def get_product_vocab(db: Session) -> Set[str]:
     """Lấy danh sách các từ/âm tiết có nghĩa từ tên các sản phẩm thực tế trong DB."""
     prods = db.query(Product.name).filter(Product.deleted_at.is_(None)).all()
@@ -176,8 +181,18 @@ def build_search_expressions(
 
     col_norm = sql_normalized_col(Product.name)
     col_spaceless = sql_spaceless_col(Product.name)
+    sku_norm = sql_normalized_col(Product.sku)
+    sku_spaceless = sql_spaceless_col(Product.sku)
     tokens = [t for t in query_norm.split(" ") if t]
     query_spaceless = query_norm.replace(" ", "").replace("-", "")
+
+    # SKU là dữ liệu thực tế, hỗ trợ khớp đầy đủ hoặc một phần mã mà không bỏ cơ chế tìm tên.
+    sku_exact_cond = sku_norm == query_norm
+    sku_partial_cond = (
+        sku_spaceless.like(f"%{escape_like_pattern(query_spaceless)}%", escape="\\")
+        if query_spaceless
+        else False
+    )
 
     # 1. Điều kiện khớp tên chính xác
     exact_cond = col_norm == query_norm
@@ -228,20 +243,24 @@ def build_search_expressions(
     # Tổng hợp bộ lọc: sản phẩm được chọn nếu thỏa mãn bất kỳ cấp độ nào ở trên
     master_filter = or_(
         exact_cond,
+        sku_exact_cond,
         phrase_boundary_cond,
         all_tokens_boundary_cond,
         synonym_cond,
         spaceless_cond,
+        sku_partial_cond,
         category_cond,
     )
 
     # Biểu thức tính điểm xếp hạng
     ranking_score = case(
         (exact_cond, 100),
+        (sku_exact_cond, 100),
         (phrase_boundary_cond, 80),
         (all_tokens_boundary_cond, 50),
         (synonym_cond, 30),
         (spaceless_cond, 25),
+        (sku_partial_cond, 25),
         (category_cond, 10),
         else_=0
     )
