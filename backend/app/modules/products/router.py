@@ -24,6 +24,7 @@ def list_products(
     category_id: Optional[int] = Query(default=None, description="Lọc theo danh mục"),
     low_stock_threshold: Optional[int] = Query(default=None, description="Lọc sắp hết hàng"),
     is_featured: Optional[bool] = Query(default=None, description="Lọc sản phẩm nổi bật"),
+    stock_status: Optional[str] = Query(default=None, description="Lọc theo tình trạng tồn kho: out_of_stock | overstocked | normal"),
     sort_by: Optional[str] = Query(default=None, description="Sắp xếp theo giá/tồn"),
     db: Session = Depends(get_db),
 ):
@@ -32,6 +33,7 @@ def list_products(
         category_id=category_id,
         low_stock_threshold=low_stock_threshold,
         is_featured=is_featured,
+        stock_status=stock_status,
         sort_by=sort_by,
     )
     items, total = ProductService.get_list(db, page=page, page_size=page_size, filters=filters)

@@ -1,5 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple, List
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.models.product import Product
@@ -18,8 +19,64 @@ class ProductService:
         """Lấy danh sách sản phẩm, 20 sản phẩm mỗi trang."""
         query = db.query(Product).filter(Product.deleted_at.is_(None))
 
+        if filters:
+            if filters.category_id is not None:
+                query = query.filter(Product.category_id == filters.category_id)
+            if filters.search:
+                pattern = f"%{filters.search.strip()}%"
+                query = query.filter(
+                    or_(
+                        Product.name.ilike(pattern),
+                        Product.sku.ilike(pattern),
+                    )
+                )
+            if filters.is_featured is not None:
+                query = query.filter(Product.is_featured == filters.is_featured)
+            if filters.low_stock_threshold is not None:
+                query = query.filter(Product.stock <= filters.low_stock_threshold)
+
+            # Lọc theo tình trạng tồn kho:
+            # - out_of_stock: stock == 0
+            # - overstocked: lưu kho > 2 tháng (60 ngày) VÀ stock > 10
+            # - normal: các trường hợp còn lại
+            if filters.stock_status:
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=60)
+                if filters.stock_status == "out_of_stock":
+                    query = query.filter(Product.stock == 0)
+                elif filters.stock_status == "overstocked":
+                    query = query.filter(
+                        and_(
+                            Product.created_at <= cutoff_date,
+                            Product.stock > 10,
+                        )
+                    )
+                elif filters.stock_status == "normal":
+                    query = query.filter(
+                        and_(
+                            Product.stock > 0,
+                            or_(
+                                Product.created_at > cutoff_date,
+                                Product.stock <= 10,
+                            ),
+                        )
+                    )
+
+            if filters.sort_by:
+                if filters.sort_by == "price_asc":
+                    query = query.order_by(Product.price.asc(), Product.id.asc())
+                elif filters.sort_by == "price_desc":
+                    query = query.order_by(Product.price.desc(), Product.id.asc())
+                elif filters.sort_by == "stock_asc":
+                    query = query.order_by(Product.stock.asc(), Product.id.asc())
+                elif filters.sort_by == "stock_desc":
+                    query = query.order_by(Product.stock.desc(), Product.id.asc())
+            else:
+                query = query.order_by(Product.id.asc())
+        else:
+            query = query.order_by(Product.id.asc())
+
         total = query.count()
-        items = query.order_by(Product.id.asc()).offset((page - 1) * page_size).limit(page_size).all()
+        items = query.offset((page - 1) * page_size).limit(page_size).all()
         return items, total
 
     @staticmethod
