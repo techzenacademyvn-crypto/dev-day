@@ -8,7 +8,13 @@
       <button @click="openCreateModal" class="btn-primary">+ Thêm Sản Phẩm</button>
     </div>
 
-<<<<<<< HEAD
+    <!-- Thanh tìm kiếm thông minh & bộ lọc danh mục Tree Select -->
+    <ProductSearchFilters
+      :initial-search="searchKeyword"
+      :initial-category="selectedCategoryId"
+      @filter="handleFilterChange"
+    />
+
     <!-- Bộ lọc khoảng giá (Task US1-FE02: Dual-thumb Slider & Quick Price Chips) -->
     <PriceFilter
       ref="priceFilterRef"
@@ -17,13 +23,29 @@
       :max="2000000"
       :step="10000"
     />
-=======
-    <!-- Thanh tìm kiếm thông minh & bộ lọc danh mục Tree Select -->
-    <ProductSearchFilters
-      :initial-search="searchKeyword"
-      :initial-category="selectedCategoryId"
-      @filter="handleFilterChange"
-    />
+
+    <!-- Toggle lọc sản phẩm nổi bật -->
+    <div class="featured-filter-bar">
+      <label class="featured-toggle-label" for="toggle-featured">
+        <div
+          id="toggle-featured"
+          class="toggle-switch"
+          :class="{ active: isFeaturedOnly }"
+          @click="toggleFeatured"
+          role="switch"
+          :aria-checked="isFeaturedOnly"
+          tabindex="0"
+          @keydown.enter="toggleFeatured"
+          @keydown.space.prevent="toggleFeatured"
+        >
+          <div class="toggle-thumb"></div>
+        </div>
+        <span class="toggle-text">
+          <span v-if="isFeaturedOnly" class="toggle-active-text">⭐ Chỉ sản phẩm nổi bật</span>
+          <span v-else>Chỉ hiển thị sản phẩm nổi bật</span>
+        </span>
+      </label>
+    </div>
 
     <!-- Trạng thái lỗi nếu có -->
     <div v-if="errorMessage" class="error-banner">
@@ -33,7 +55,6 @@
       <span>{{ errorMessage }}</span>
       <button @click="fetchProducts(currentPage)" class="btn-retry">Thử lại</button>
     </div>
->>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 
     <!-- Bảng danh sách sản phẩm -->
     <div class="table-container">
@@ -57,50 +78,28 @@
               <span>Đang tải danh sách sản phẩm...</span>
             </td>
           </tr>
-<<<<<<< HEAD
-          <!-- Thông báo khi không có sản phẩm nào trong khoảng giá -->
+
+          <!-- Empty State -->
           <tr v-else-if="filteredProducts.length === 0">
             <td colspan="7" class="empty-table-cell">
               <div class="empty-filter-box">
-                <span class="empty-icon">🏷️</span>
-                <p class="empty-msg">Không tìm thấy sản phẩm nào trong khoảng giá này</p>
-                <button @click="resetPriceFilter" class="btn-reset-inline">
-                  🔄 Đặt lại tất cả mức giá
-=======
-
-          <!-- Empty State -->
-          <tr v-else-if="products.length === 0">
-            <td colspan="7" class="text-center py-8 state-cell">
-              <div class="empty-state">
-                <svg class="empty-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-                <p class="empty-title">Không tìm thấy sản phẩm phù hợp</p>
-                <p class="empty-desc">Thử thay đổi từ khóa tìm kiếm hoặc chọn danh mục khác.</p>
-                <button
-                  v-if="searchKeyword || selectedCategoryId !== null"
-                  @click="resetFilters"
-                  class="btn-reset-empty"
-                >
-                  Xóa bộ lọc
->>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
+                <span class="empty-icon-emoji">🏷️</span>
+                <p class="empty-msg">
+                  {{
+                    isFeaturedOnly
+                      ? 'Không tìm thấy sản phẩm nổi bật nào phù hợp'
+                      : 'Không tìm thấy sản phẩm nào trong khoảng giá này'
+                  }}
+                </p>
+                <button @click="resetAllFilters" class="btn-reset-inline">
+                  🔄 Đặt lại tất cả bộ lọc
                 </button>
               </div>
             </td>
           </tr>
-<<<<<<< HEAD
-          <tr v-for="prod in filteredProducts" :key="prod.id">
-            <td><code>{{ prod.sku }}</code></td>
-            <td class="font-medium">{{ prod.name }}</td>
-            <td>#{{ prod.category_id }}</td>
-            <td class="price-tag">
-              <div class="price-vnd-text">{{ formatVND(getProductPriceVND(prod.price)) }}</div>
-              <div class="price-usd-sub">${{ Number(prod.price).toFixed(2) }}</div>
-            </td>
-=======
 
           <!-- Data Rows -->
-          <tr v-for="prod in products" :key="prod.id">
+          <tr v-for="prod in filteredProducts" :key="prod.id">
             <td><code>{{ prod.sku }}</code></td>
             <td class="font-medium text-white">{{ prod.name }}</td>
             <td>
@@ -108,8 +107,10 @@
                 {{ categoryMap[prod.category_id] || `#${prod.category_id}` }}
               </span>
             </td>
-            <td class="price-tag">${{ Number(prod.price).toFixed(2) }}</td>
->>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
+            <td class="price-tag">
+              <div class="price-vnd-text">{{ formatVND(getProductPriceVND(prod.price)) }}</div>
+              <div class="price-usd-sub">${{ Number(prod.price).toFixed(2) }}</div>
+            </td>
             <td>
               <span :class="['stock-badge', prod.stock === 0 ? 'out-of-stock' : 'in-stock']">
                 {{ prod.stock }} {{ prod.stock === 0 ? '(Hết hàng)' : 'cái' }}
@@ -127,17 +128,9 @@
       </table>
     </div>
 
-<<<<<<< HEAD
-    <!-- Phân trang / Thống kê -->
-    <div class="pagination-bar">
-      <span>
-        Hiển thị <strong>{{ filteredProducts.length }}</strong> / {{ totalProducts }} sản phẩm (Trang {{ currentPage }} / {{ totalPages }})
-      </span>
-=======
-    <!-- Phân trang (giữ nguyên bộ lọc khi chuyển trang) -->
+    <!-- Phân trang -->
     <div class="pagination-bar" v-if="totalProducts > 0">
       <span>Trang {{ currentPage }} / {{ totalPages }} (Tổng cộng {{ totalProducts }} sản phẩm)</span>
->>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
       <div class="pagination-btns">
         <button
           :disabled="currentPage <= 1 || loading"
@@ -162,12 +155,9 @@
 import { ref, computed, onMounted } from 'vue';
 import api from '../../lib/api';
 import type { Product } from '../../types';
-<<<<<<< HEAD
+import ProductSearchFilters from '../../components/admin/ProductSearchFilters.vue';
 import PriceFilter from '../../components/PriceFilter.vue';
 import { getProductPriceVND, formatVND } from '../../utils/format';
-=======
-import ProductSearchFilters from '../../components/admin/ProductSearchFilters.vue';
->>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 
 const products = ref<Product[]>([]);
 const totalProducts = ref(0);
@@ -176,14 +166,27 @@ const totalPages = ref(1);
 const loading = ref(false);
 const errorMessage = ref('');
 
-// Bộ nhớ cache tên danh mục để hiển thị đẹp thay vì ID thô
+// Cache tên danh mục
 const categoryMap = ref<Record<number, string>>({});
 
-// State bộ lọc hiện tại
+// State bộ lọc
 const searchKeyword = ref('');
 const selectedCategoryId = ref<number | null>(null);
+const isFeaturedOnly = ref(false);
 
-// Lấy danh mục để hiển thị tên trên bảng
+// Bộ lọc khoảng giá
+const priceFilterRef = ref<InstanceType<typeof PriceFilter> | null>(null);
+const priceRange = ref<[number, number]>([0, 2000000]);
+
+// Lọc client-side theo giá
+const filteredProducts = computed(() => {
+  const [minPrice, maxPrice] = priceRange.value;
+  return products.value.filter((prod) => {
+    const vndPrice = getProductPriceVND(prod.price);
+    return vndPrice >= minPrice && vndPrice <= maxPrice;
+  });
+});
+
 async function fetchCategoriesMap() {
   try {
     const res = await api.get('/categories', {
@@ -201,41 +204,13 @@ async function fetchCategoriesMap() {
   }
 }
 
-const priceFilterRef = ref<InstanceType<typeof PriceFilter> | null>(null);
-const priceRange = ref<[number, number]>([0, 2000000]);
-
-// Lọc sản phẩm hiển thị theo khoảng giá đã chọn
-const filteredProducts = computed(() => {
-  const [minPrice, maxPrice] = priceRange.value;
-  return products.value.filter((prod) => {
-    const vndPrice = getProductPriceVND(prod.price);
-    return vndPrice >= minPrice && vndPrice <= maxPrice;
-  });
-});
-
-function resetPriceFilter() {
-  if (priceFilterRef.value) {
-    priceFilterRef.value.reset();
-  } else {
-    priceRange.value = [0, 2000000];
-  }
-}
-
 async function fetchProducts(page = 1) {
   loading.value = true;
   errorMessage.value = '';
   currentPage.value = page;
 
   try {
-<<<<<<< HEAD
-    const res = await api.get('/products', {
-      params: { page, page_size: 50 },
-    });
-=======
-    const params: Record<string, any> = {
-      page,
-      page_size: 20,
-    };
+    const params: Record<string, any> = { page, page_size: 20 };
 
     if (searchKeyword.value.trim()) {
       params.search = searchKeyword.value.trim();
@@ -243,9 +218,11 @@ async function fetchProducts(page = 1) {
     if (selectedCategoryId.value !== null) {
       params.category_id = selectedCategoryId.value;
     }
+    if (isFeaturedOnly.value) {
+      params.is_featured = true;
+    }
 
     const res = await api.get('/products', { params });
->>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
     if (res.data.success) {
       products.value = res.data.data.items;
       totalProducts.value = res.data.data.total;
@@ -261,7 +238,7 @@ async function fetchProducts(page = 1) {
   }
 }
 
-// Xử lý khi bộ lọc thay đổi: reset về trang 1
+// Bộ lọc search/category thay đổi
 function handleFilterChange(payload: { search: string; categoryId: number | null }) {
   searchKeyword.value = payload.search;
   selectedCategoryId.value = payload.categoryId;
@@ -269,17 +246,29 @@ function handleFilterChange(payload: { search: string; categoryId: number | null
   fetchProducts(1);
 }
 
-// Chuyển trang (giữ nguyên bộ lọc)
-function changePage(page: number) {
-  fetchProducts(page);
-}
-
-// Xóa tất cả bộ lọc từ empty state
-function resetFilters() {
-  searchKeyword.value = '';
-  selectedCategoryId.value = null;
+// Toggle lọc nổi bật
+function toggleFeatured() {
+  isFeaturedOnly.value = !isFeaturedOnly.value;
   currentPage.value = 1;
   fetchProducts(1);
+}
+
+// Đặt lại tất cả bộ lọc
+function resetAllFilters() {
+  searchKeyword.value = '';
+  selectedCategoryId.value = null;
+  isFeaturedOnly.value = false;
+  if (priceFilterRef.value) {
+    priceFilterRef.value.reset();
+  } else {
+    priceRange.value = [0, 2000000];
+  }
+  currentPage.value = 1;
+  fetchProducts(1);
+}
+
+function changePage(page: number) {
+  fetchProducts(page);
 }
 
 function openCreateModal() {
@@ -343,6 +332,69 @@ onMounted(() => {
   background: #0369a1;
 }
 
+/* === Featured Toggle === */
+.featured-filter-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  margin-top: 0.25rem;
+}
+
+.featured-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: #334155;
+  border-radius: 9999px;
+  transition: background 0.25s ease;
+  cursor: pointer;
+  outline: none;
+  border: 2px solid transparent;
+}
+
+.toggle-switch:focus-visible {
+  border-color: #38bdf8;
+}
+
+.toggle-switch.active {
+  background: #0284c7;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.25s ease;
+}
+
+.toggle-switch.active .toggle-thumb {
+  transform: translateX(20px);
+}
+
+.toggle-text {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  transition: color 0.2s;
+}
+
+.toggle-active-text {
+  color: #facc15;
+  font-weight: 600;
+}
+
+/* === Error Banner === */
 .error-banner {
   display: flex;
   align-items: center;
@@ -371,6 +423,7 @@ onMounted(() => {
   cursor: pointer;
 }
 
+/* === Table === */
 .table-container {
   background: #1e293b;
   border: 1px solid #334155;
@@ -400,8 +453,6 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
-<<<<<<< HEAD
-=======
 .category-tag {
   display: inline-block;
   background: rgba(56, 189, 248, 0.1);
@@ -413,27 +464,29 @@ onMounted(() => {
   font-weight: 500;
 }
 
->>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 .price-tag {
   color: #38bdf8;
   font-weight: 600;
 }
-<<<<<<< HEAD
+
 .price-vnd-text {
   font-size: 1rem;
   font-weight: 700;
   color: #38bdf8;
 }
+
 .price-usd-sub {
   font-size: 0.75rem;
   color: #64748b;
   font-weight: 400;
 }
 
+/* === Empty State === */
 .empty-table-cell {
   padding: 3.5rem 1rem !important;
   text-align: center;
 }
+
 .empty-filter-box {
   display: flex;
   flex-direction: column;
@@ -441,14 +494,17 @@ onMounted(() => {
   justify-content: center;
   gap: 0.75rem;
 }
-.empty-icon {
+
+.empty-icon-emoji {
   font-size: 2.5rem;
 }
+
 .empty-msg {
   color: #f87171;
   font-size: 1.15rem;
   font-weight: 700;
 }
+
 .btn-reset-inline {
   background: #0284c7;
   color: #ffffff;
@@ -460,12 +516,12 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
 .btn-reset-inline:hover {
   background: #0369a1;
 }
-=======
->>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 
+/* === Stock & Featured Badges === */
 .stock-badge {
   font-size: 0.8rem;
   padding: 0.15rem 0.5rem;
@@ -492,6 +548,11 @@ onMounted(() => {
   font-weight: 600;
 }
 
+.text-muted {
+  color: #475569;
+}
+
+/* === Action Buttons === */
 .btn-sm {
   padding: 0.3rem 0.6rem;
   font-size: 0.75rem;
@@ -510,6 +571,7 @@ onMounted(() => {
   background: #dc2626;
 }
 
+/* === State Cells === */
 .state-cell {
   padding: 3rem 1rem !important;
 }
@@ -531,48 +593,7 @@ onMounted(() => {
   }
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-icon {
-  color: #64748b;
-  margin-bottom: 0.75rem;
-}
-
-.empty-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #f8fafc;
-  margin-bottom: 0.25rem;
-}
-
-.empty-desc {
-  font-size: 0.875rem;
-  color: #94a3b8;
-  margin-bottom: 1rem;
-}
-
-.btn-reset-empty {
-  background: #1e293b;
-  color: #38bdf8;
-  border: 1px solid #334155;
-  padding: 0.45rem 1rem;
-  border-radius: 0.375rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-reset-empty:hover {
-  background: #334155;
-  border-color: #38bdf8;
-}
-
+/* === Pagination === */
 .pagination-bar {
   display: flex;
   justify-content: space-between;
@@ -581,14 +602,7 @@ onMounted(() => {
   color: #94a3b8;
   font-size: 0.85rem;
 }
-<<<<<<< HEAD
-.pagination-bar strong {
-  color: #38bdf8;
-  font-size: 1rem;
-}
-=======
 
->>>>>>> 4546ee6c414716f165981f2a03b9d36e046db9a7
 .pagination-btns {
   display: flex;
   gap: 0.5rem;
