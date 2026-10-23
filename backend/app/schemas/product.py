@@ -42,6 +42,8 @@ class ProductResponse(ProductBase):
 class ProductFilter(BaseModel):
     category_id: Optional[int] = None
     search: Optional[str] = None
+    min_price: Optional[Decimal] = None
+    max_price: Optional[Decimal] = None
     low_stock_threshold: Optional[int] = None
     is_featured: Optional[bool] = None
-    sort_by: Optional[str] = None  # "price_asc", "price_desc", "stock_asc", "stock_desc"
+    sort_by: Optional[str] = None  # "name_asc", "name_desc", "price_asc", "price_desc", "stock_asc", "stock_desc"

@@ -101,3 +101,99 @@ def test_search_products_no_result():
     assert data["data"]["total"] == 0
     assert len(data["data"]["items"]) == 0
 
+
+
+def test_filter_products_by_price_range():
+    response = client.get("/api/v1/products?min_price=20&max_price=50")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    for prod in data["data"]["items"]:
+        price = float(prod["price"])
+        assert 20.0 <= price <= 50.0
+
+
+def test_filter_products_by_min_price_only():
+    response = client.get("/api/v1/products?min_price=100")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    for prod in data["data"]["items"]:
+        price = float(prod["price"])
+        assert price >= 100.0
+
+
+def test_filter_products_by_max_price_only():
+    response = client.get("/api/v1/products?max_price=30")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    for prod in data["data"]["items"]:
+        price = float(prod["price"])
+        assert price <= 30.0
+
+
+def test_filter_products_min_greater_than_max():
+    response = client.get("/api/v1/products?min_price=500&max_price=100")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["data"]["total"] == 0
+    assert len(data["data"]["items"]) == 0
+
+
+def test_sort_products_by_price_asc():
+    response = client.get("/api/v1/products?sort_by=price_asc&page_size=20")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    prices = [float(p["price"]) for p in data["data"]["items"]]
+    assert prices == sorted(prices)
+
+
+def test_sort_products_by_price_desc():
+    response = client.get("/api/v1/products?sort_by=price_desc&page_size=20")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    prices = [float(p["price"]) for p in data["data"]["items"]]
+    assert prices == sorted(prices, reverse=True)
+
+
+def test_sort_products_by_name():
+    res_asc = client.get("/api/v1/products?sort_by=name_asc&page_size=40")
+    res_desc = client.get("/api/v1/products?sort_by=name_desc&page_size=40")
+    assert res_asc.status_code == 200
+    assert res_desc.status_code == 200
+
+    names_asc = [p["name"] for p in res_asc.json()["data"]["items"]]
+    names_desc = [p["name"] for p in res_desc.json()["data"]["items"]]
+    assert len(names_asc) == 40
+    assert len(names_desc) == 40
+    # Thứ tự DESC phải là đảo ngược của ASC
+    assert names_desc == list(reversed(names_asc))
+    # Phần tử đầu tiên của ASC bắt đầu bằng chữ A/Ấ
+    assert names_asc[0].startswith("Ấ") or names_asc[0].startswith("A")
+    # Phần tử đầu tiên của DESC bắt đầu bằng chữ V
+    assert names_desc[0].startswith("V")
+
+
+def test_sort_products_by_stock_asc():
+    response = client.get("/api/v1/products?sort_by=stock_asc&page_size=20")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    stocks = [p["stock"] for p in data["data"]["items"]]
+    assert stocks == sorted(stocks)
+
+
+def test_sort_products_by_stock_desc():
+    response = client.get("/api/v1/products?sort_by=stock_desc&page_size=20")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    stocks = [p["stock"] for p in data["data"]["items"]]
+    assert stocks == sorted(stocks, reverse=True)
+
+
+
