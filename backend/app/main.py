@@ -12,7 +12,7 @@ from app.core.exceptions import (
 # Import routers
 from app.modules.auth.router import router as auth_router
 from app.modules.categories.router import router as categories_router
-from app.modules.products.router import router as products_router
+from app.modules.products.router import router as products_router, admin_router as admin_products_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -39,6 +39,7 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(categories_router, prefix="/api/v1")
 app.include_router(products_router, prefix="/api/v1")
+app.include_router(admin_products_router, prefix="/api/v1")
 
 
 @app.get("/", tags=["Health Check"])

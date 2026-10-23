@@ -22,6 +22,14 @@ class ProductService:
         query = db.query(Product).filter(Product.deleted_at.is_(None))
         ranking_score = None
 
+        # Lọc trạng thái ẩn/hiện:
+        # Nếu show_hidden=False: chỉ truy vấn status == 'active'
+        # Nếu show_hidden=True: chỉ truy vấn status == 'hidden'
+        if filters and filters.show_hidden:
+            query = query.filter(Product.status == "hidden")
+        else:
+            query = query.filter(Product.status == "active")
+
         if filters:
             if filters.category_id is not None:
                 query = query.filter(Product.category_id == filters.category_id)
@@ -145,6 +153,7 @@ class ProductService:
             is_featured=data.is_featured,
             image_url=data.image_url,
             description=data.description,
+            status=getattr(data, "status", None) or "active",
         )
         db.add(product)
         db.commit()
@@ -173,3 +182,12 @@ class ProductService:
         product = ProductService.get_by_id(db, product_id)
         product.deleted_at = datetime.now(timezone.utc)
         db.commit()
+
+    @staticmethod
+    def toggle_status(db: Session, product_id: int) -> Product:
+        """Đảo ngược trạng thái giữa 'active' và 'hidden' của sản phẩm."""
+        product = ProductService.get_by_id(db, product_id)
+        product.status = "hidden" if product.status == "active" else "active"
+        db.commit()
+        db.refresh(product)
+        return product

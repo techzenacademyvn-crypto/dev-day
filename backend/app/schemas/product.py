@@ -13,6 +13,7 @@ class ProductBase(BaseModel):
     is_featured: bool = Field(default=False, description="Đánh dấu sản phẩm nổi bật")
     image_url: Optional[str] = None
     description: Optional[str] = None
+    status: str = Field(default="active", description="Trạng thái sản phẩm ('active' hoặc 'hidden')")
 
 
 class ProductCreate(ProductBase):
@@ -28,6 +29,7 @@ class ProductUpdate(BaseModel):
     is_featured: Optional[bool] = None
     image_url: Optional[str] = None
     description: Optional[str] = None
+    status: Optional[str] = Field(None, description="Trạng thái sản phẩm ('active' hoặc 'hidden')")
 
 
 class ProductResponse(ProductBase):
@@ -48,3 +50,4 @@ class ProductFilter(BaseModel):
     is_featured: Optional[bool] = None
     sort_by: Optional[str] = None  # "price_asc", "price_desc", "stock_asc", "stock_desc"
     stock_status: Optional[str] = Field(default=None, description="Lọc tình trạng tồn kho: out_of_stock | overstocked | normal")
+    show_hidden: bool = Field(default=False, description="Lọc sản phẩm ẩn (False: chỉ active, True: chỉ hidden)")

@@ -26,6 +26,7 @@ def list_products(
     is_featured: Optional[bool] = Query(default=None, description="Lọc sản phẩm nổi bật"),
     stock_status: Optional[str] = Query(default=None, description="Lọc theo tình trạng tồn kho: out_of_stock | overstocked | normal"),
     sort_by: Optional[str] = Query(default=None, description="Sắp xếp theo giá/tồn"),
+    show_hidden: bool = Query(default=False, description="Lọc sản phẩm ẩn (False: chỉ active, True: chỉ hidden)"),
     db: Session = Depends(get_db),
 ):
     filters = ProductFilter(
@@ -35,6 +36,7 @@ def list_products(
         is_featured=is_featured,
         stock_status=stock_status,
         sort_by=sort_by,
+        show_hidden=show_hidden,
     )
     items, total = ProductService.get_list(db, page=page, page_size=page_size, filters=filters)
     page_data = PageResponse.create(
@@ -127,3 +129,27 @@ def delete_product(
 ):
     ProductService.soft_delete(db, product_id)
     return ApiResponse(message="Đã xoá sản phẩm thành công")
+
+
+admin_router = APIRouter(prefix="/admin/products", tags=["3. Sản phẩm (Products)"])
+
+
+@router.patch(
+    "/{product_id}/toggle-status",
+    response_model=ApiResponse[ProductResponse],
+    summary="Đảo ngược trạng thái sản phẩm ('active' <-> 'hidden')",
+)
+@admin_router.patch(
+    "/{product_id}/toggle-status",
+    response_model=ApiResponse[ProductResponse],
+    summary="Đảo ngược trạng thái sản phẩm ('active' <-> 'hidden')",
+)
+def toggle_product_status(
+    product_id: int,
+    db: Session = Depends(get_db),
+):
+    item = ProductService.toggle_status(db, product_id)
+    return ApiResponse(
+        data=ProductResponse.model_validate(item),
+        message=f"Đã cập nhật trạng thái sản phẩm sang '{item.status}' thành công",
+    )

@@ -25,6 +25,7 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", server_default="active", nullable=False)
 
     category: Mapped["Category"] = relationship("Category", back_populates="products")
     order_items: Mapped[list["OrderItem"]] = relationship("OrderItem", back_populates="product")

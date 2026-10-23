@@ -1,5 +1,13 @@
 <template>
   <div class="admin-page">
+    <!-- Toast thông báo thời gian thực -->
+    <transition name="toast-fade">
+      <div v-if="toast.show" :class="['toast-notification', toast.type]">
+        <span class="toast-icon">{{ toast.type === 'success' ? '✓' : '⚠️' }}</span>
+        <span class="toast-message">{{ toast.message }}</span>
+      </div>
+    </transition>
+
     <div class="page-header">
       <div>
         <h1 class="page-title">Quản Lý Sản Phẩm</h1>
@@ -199,8 +207,17 @@
                 <span v-if="prod.is_featured" class="badge-featured">⭐ Nổi bật</span>
                 <span v-else class="text-muted">—</span>
               </td>
-              <td>
-                <button @click="handleDelete(prod.id)" class="btn-sm btn-delete">Xoá</button>
+              <td class="action-cell">
+                <div class="action-buttons">
+                  <button
+                    @click="handleToggleHide(prod)"
+                    class="btn-sm btn-hide"
+                    title="Ẩn sản phẩm khỏi danh sách công khai"
+                  >
+                    👁️‍🗨️ Ẩn
+                  </button>
+                  <button @click="handleDelete(prod.id)" class="btn-sm btn-delete">Xoá</button>
+                </div>
               </td>
             </tr>
           </template>
@@ -495,6 +512,12 @@ async function fetchProducts(page = 1) {
       products.value = res.data.data.items;
       totalProducts.value = res.data.data.total;
       totalPages.value = res.data.data.total_pages;
+
+      // Nếu sau khi ẩn mà trang hiện tại trống và lớn hơn tổng số trang thì lùi về trang trước
+      if (currentPage.value > totalPages.value && totalPages.value > 0) {
+        currentPage.value = totalPages.value;
+        await fetchProducts(totalPages.value);
+      }
     } else {
       errorMessage.value = res.data.message || 'Không thể tải danh sách sản phẩm';
     }
@@ -560,6 +583,42 @@ function resetAllFilters() {
 
 function openCreateModal() {
   alert('Chức năng thêm sản phẩm qua form quản trị đã sẵn sàng kết nối API POST /products.');
+}
+
+// Toast notification state
+const toast = ref<{ show: boolean; message: string; type: 'success' | 'error' }>({
+  show: false,
+  message: '',
+  type: 'success',
+});
+let toastTimer: any = null;
+
+function showToast(message: string, type: 'success' | 'error' = 'success') {
+  if (toastTimer) clearTimeout(toastTimer);
+  toast.value = { show: true, message, type };
+  toastTimer = setTimeout(() => {
+    toast.value.show = false;
+  }, 3000);
+}
+
+// Xử lý Ẩn sản phẩm qua API PATCH
+async function handleToggleHide(prod: Product) {
+  try {
+    const res = await api.patch(`/admin/products/${prod.id}/toggle-status`);
+    if (res.data.success) {
+      showToast(`Đã ẩn sản phẩm "${prod.name}" thành công!`, 'success');
+      // Tự động gọi lại hàm fetch danh sách sản phẩm hiện tại để sản phẩm biến mất ngay lập tức và bù dòng từ trang sau
+      await fetchProducts(currentPage.value);
+    } else {
+      showToast(res.data.message || 'Không thể thay đổi trạng thái sản phẩm', 'error');
+    }
+  } catch (err: any) {
+    showToast(
+      err.response?.data?.error?.message || err.response?.data?.message || 'Có lỗi xảy ra khi ẩn sản phẩm',
+      'error'
+    );
+    console.error('Lỗi khi ẩn sản phẩm:', err);
+  }
 }
 
 async function handleDelete(id: number) {
@@ -965,6 +1024,27 @@ onMounted(() => {
   cursor: pointer;
 }
 
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-hide {
+  background: #334155;
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.15s ease;
+}
+
+.btn-hide:hover {
+  background: #f59e0b;
+  color: #0f172a;
+  font-weight: 600;
+}
+
 .btn-delete {
   background: #ef4444;
   color: #fff;
@@ -973,6 +1053,54 @@ onMounted(() => {
 
 .btn-delete:hover {
   background: #dc2626;
+}
+
+/* Toast thông báo thời gian thực */
+.toast-notification {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #ffffff;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+.toast-notification.success {
+  background: rgba(16, 185, 129, 0.95);
+  border: 1px solid #10b981;
+}
+
+.toast-notification.error {
+  background: rgba(239, 68, 68, 0.95);
+  border: 1px solid #ef4444;
+}
+
+.toast-icon {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-16px) scale(0.95);
+}
+
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
 }
 
 .empty-table-cell {
