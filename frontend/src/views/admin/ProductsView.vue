@@ -95,6 +95,13 @@
                 <button @click="resetPriceFilter" class="btn-reset-inline">
                   🔄 Đặt lại khoảng giá
                 </button>
+                <button
+                  v-if="searchKeyword || selectedCategoryId !== null"
+                  @click="resetFilters"
+                  class="btn-reset-empty"
+                >
+                  Xóa bộ lọc tìm kiếm
+                </button>
               </div>
             </td>
           </tr>
@@ -551,6 +558,7 @@ onMounted(() => {
   font-weight: 500;
   color: #cbd5e1;
 }
+
 .stock-badge {
   font-size: 0.8rem;
   padding: 0.15rem 0.5rem;
