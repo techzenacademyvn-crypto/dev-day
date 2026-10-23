@@ -17,7 +17,7 @@
           @change="handleFilterChange"
           class="w-4 h-4 text-sky-600 bg-slate-700 border-slate-500 rounded focus:ring-sky-500 cursor-pointer accent-sky-500"
         />
-        <span>⭐ Chỉ hiển thị sản phẩm nổi bật</span>
+        <span>⭐ Lọc sản phẩm nổi bật</span>
       </label>
       <span v-if="isFeaturedOnly" class="text-xs text-amber-400 font-semibold bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
         Đang lọc nổi bật
