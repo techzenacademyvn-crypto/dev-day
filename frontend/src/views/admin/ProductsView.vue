@@ -6,187 +6,176 @@
         <p class="page-desc">Danh sách và kiểm tra tình trạng tồn kho sản phẩm</p>
       </div>
       <div class="header-actions">
-        <button @click="sortByFeatured" :class="['btn-featured', isFeaturedSorted ? 'active' : '']">
-          Sản phẩm nổi bật
-        </button>
         <button @click="openCreateModal" class="btn-primary">+ Thêm Sản Phẩm</button>
       </div>
     </div>
 
-    <!-- Bộ lọc tổng hợp: Tìm kiếm, Danh mục, Khoảng giá và Sắp xếp -->
-    <div class="filter-card">
-      <div class="filter-header">
-        <span class="filter-title">🔍 Bộ lọc & Tìm kiếm sản phẩm</span>
-      </div>
+    <!-- Bảng danh sách sản phẩm tích hợp Sticky Filter Bar -->
+    <div class="table-card" :style="{ '--filter-bar-h': filterBarHeight + 'px' }">
+      <!-- Sticky Filter Bar gắn liền đỉnh bảng -->
+      <div ref="stickyFilterBarRef" class="sticky-filter-bar">
+        <div class="filter-controls">
+          <!-- Ô tìm kiếm tên sản phẩm theo thời gian thực -->
+          <div class="filter-item search-item">
+            <label class="control-label" for="product-search-input">Tìm kiếm</label>
+            <div class="input-with-icon">
+              <span class="search-icon">🔍</span>
+              <input
+                id="product-search-input"
+                type="text"
+                v-model="searchQuery"
+                @input="handleRealtimeSearch"
+                placeholder="Nhập tên sản phẩm..."
+                class="form-control search-input"
+              />
+            </div>
+          </div>
 
-      <div class="filter-controls">
-        <!-- Ô tìm kiếm tên sản phẩm -->
-        <div class="filter-item search-wrapper">
-          <label class="input-label" for="product-search-input">Tìm kiếm</label>
-          <div class="search-input-group">
-            <input
-              id="product-search-input"
-              type="text"
-              v-model="searchQuery"
-              @keyup.enter="handleFilter"
-              placeholder="Nhập tên sản phẩm..."
-              class="form-control search-input"
-            />
+          <!-- Chọn danh mục -->
+          <div class="filter-item category-item">
+            <label class="control-label" for="category-select">Danh mục</label>
+            <select
+              id="category-select"
+              v-model="selectedCategoryId"
+              @change="handleCategoryChange"
+              class="form-control select-control"
+            >
+              <option value="">-- Tất cả danh mục --</option>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                {{ cat.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Khoảng giá tối thiểu & tối đa (áp dụng tự động) -->
+          <div class="filter-item price-group-item">
+            <label class="control-label">Khoảng giá ($)</label>
+            <div class="price-inputs-row">
+              <div class="input-with-prefix">
+                <span class="currency-symbol">$</span>
+                <input
+                  id="min-price"
+                  v-model="minPriceInput"
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="Min"
+                  class="form-control price-input"
+                  @keydown="handlePriceKeydown"
+                  @input="handlePriceInput('min')"
+                  @paste="handlePricePaste($event, 'min')"
+                />
+              </div>
+              <span class="range-divider">—</span>
+              <div class="input-with-prefix">
+                <span class="currency-symbol">$</span>
+                <input
+                  id="max-price"
+                  v-model="maxPriceInput"
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="Max"
+                  class="form-control price-input"
+                  @keydown="handlePriceKeydown"
+                  @input="handlePriceInput('max')"
+                  @paste="handlePricePaste($event, 'max')"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Nút Sản phẩm nổi bật được đưa vào trong Sticky Bar -->
+          <div class="filter-item featured-item">
+            <label class="control-label">Nổi bật</label>
+            <button
+              type="button"
+              @click="sortByFeatured"
+              :class="['btn-featured-toggle', isFeaturedSorted ? 'active' : '']"
+              title="Đẩy các sản phẩm nổi bật lên đầu"
+            >
+              <span class="star-icon">⭐</span>
+              <span>Nổi bật</span>
+            </button>
+          </div>
+
+          <!-- Nhóm nút bấm: Đặt lại (đã bỏ nút Lọc) -->
+          <div class="filter-actions">
+            <button
+              v-if="isFilterActive"
+              @click="handleReset"
+              class="btn-reset"
+              id="btn-reset-price"
+            >
+              Đặt lại
+            </button>
           </div>
         </div>
 
-        <!-- Chọn danh mục -->
-        <div class="filter-item">
-          <label class="input-label" for="category-select">Danh mục</label>
-          <select
-            id="category-select"
-            v-model="selectedCategoryId"
-            @change="handleFilter"
-            class="form-control select-control"
-          >
-            <option value="">-- Tất cả danh mục --</option>
-            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-              {{ cat.name }}
-            </option>
-          </select>
+        <!-- Thông báo lỗi khi min > max -->
+        <div v-if="validationWarning" class="filter-warning">
+          ⚠️ {{ validationWarning }}
         </div>
 
-        <!-- Khoảng giá tối thiểu -->
-        <div class="filter-item price-input-wrapper">
-          <label class="input-label" for="min-price">Giá tối thiểu ($)</label>
-          <div class="input-with-prefix">
-            <span class="currency-symbol">$</span>
-            <input
-              id="min-price"
-              v-model="minPriceInput"
-              type="text"
-              inputmode="decimal"
-              placeholder="0.00"
-              class="form-control price-input"
-              @keydown="handlePriceKeydown"
-              @input="sanitizePriceInput('min')"
-              @paste="handlePricePaste($event, 'min')"
-              @keyup.enter="handleFilter"
-            />
+        <!-- Badge hiển thị bộ lọc đang áp dụng -->
+        <div v-if="isFilterActive && !validationWarning" class="active-filter-badge-row">
+          <div class="active-filter-badge">
+            <span>Đang áp dụng: <strong>{{ activeFilterText }}</strong></span>
+            <button @click="handleReset" class="btn-clear-tag" title="Xóa toàn bộ bộ lọc">✕</button>
           </div>
         </div>
-
-        <span class="range-divider">—</span>
-
-        <!-- Khoảng giá tối đa -->
-        <div class="filter-item price-input-wrapper">
-          <label class="input-label" for="max-price">Giá tối đa ($)</label>
-          <div class="input-with-prefix">
-            <span class="currency-symbol">$</span>
-            <input
-              id="max-price"
-              v-model="maxPriceInput"
-              type="text"
-              inputmode="decimal"
-              placeholder="Tối đa..."
-              class="form-control price-input"
-              @keydown="handlePriceKeydown"
-              @input="sanitizePriceInput('max')"
-              @paste="handlePricePaste($event, 'max')"
-              @keyup.enter="handleFilter"
-            />
-          </div>
-        </div>
-
-        <!-- Sắp xếp -->
-        <div class="filter-item sort-wrapper">
-          <label class="input-label" for="select-sort">Sắp xếp theo</label>
-          <select
-            id="select-sort"
-            v-model="sortBy"
-            @change="handleSortChange"
-            class="form-control select-control"
-          >
-            <option value="">Mặc định (ID)</option>
-            <option value="name_asc">🔤 Tên: A → Z (Alphabet)</option>
-            <option value="name_desc">🔤 Tên: Z → A (Alphabet)</option>
-            <option value="price_asc">📈 Giá: Thấp đến Cao</option>
-            <option value="price_desc">📉 Giá: Cao đến Thấp</option>
-            <option value="stock_asc">📦 Tồn kho: Ít đến Nhiều</option>
-            <option value="stock_desc">📦 Tồn kho: Nhiều đến Ít</option>
-          </select>
-        </div>
-
-        <!-- Nhóm nút bấm -->
-        <div class="filter-btn-group">
-          <button @click="handleFilter" class="btn-primary btn-search" id="btn-search-price">
-            Lọc & Tìm
-          </button>
-          <button
-            v-if="isFilterActive"
-            @click="handleReset"
-            class="btn-reset"
-            id="btn-reset-price"
-          >
-            Đặt lại
-          </button>
-        </div>
       </div>
 
-      <!-- Thông báo lỗi khi min > max -->
-      <div v-if="validationWarning" class="filter-warning">
-        ⚠️ {{ validationWarning }}
-      </div>
-
-      <!-- Badge hiển thị bộ lọc đang áp dụng -->
-      <div v-if="isFilterActive && !validationWarning" class="active-filter-badge">
-        <span>Đang áp dụng: <strong>{{ activeFilterText }}</strong></span>
-        <button @click="handleReset" class="btn-clear-tag" title="Xóa toàn bộ bộ lọc">✕</button>
-      </div>
-    </div>
-
-    <!-- Bảng danh sách sản phẩm -->
-    <div class="table-container">
       <table class="data-table">
+        <colgroup>
+          <col style="width: 6%" />
+          <col style="width: 36%" />
+          <col style="width: 17%" />
+          <col style="width: 13%" />
+          <col style="width: 15%" />
+          <col style="width: 13%" />
+        </colgroup>
         <thead>
           <tr>
-            <th>SKU</th>
-            <th class="th-sortable" @click="toggleSort('name')" title="Nhấp để sắp xếp theo Tên sản phẩm (A-Z / Z-A)">
-              <div class="th-content">
+            <th class="text-center col-featured-th" title="Sản phẩm nổi bật">⭐</th>
+            <th class="th-sortable" @click="toggleSort('name')" title="Sắp xếp theo Tên (A-Z / Z-A)">
+              <div class="th-header-inner">
                 <span>Tên Sản Phẩm</span>
                 <span :class="['sort-badge', sortBy.startsWith('name_') ? 'sort-active' : '']">
-                  {{ sortBy === 'name_asc' ? '▲ A-Z' : (sortBy === 'name_desc' ? '▼ Z-A' : '⇅') }}
+                  {{ sortBy === 'name_asc' ? '▲' : (sortBy === 'name_desc' ? '▼' : '⇅') }}
                 </span>
               </div>
             </th>
             <th>Danh Mục</th>
-            <th class="th-sortable" @click="toggleSort('price')" title="Nhấp để sắp xếp theo Giá tăng/giảm">
-              <div class="th-content">
+            <th class="th-sortable" @click="toggleSort('price')" title="Sắp xếp theo Giá (Tăng / Giảm)">
+              <div class="th-header-inner">
                 <span>Đơn Giá</span>
                 <span :class="['sort-badge', sortBy.startsWith('price_') ? 'sort-active' : '']">
-                  {{ sortBy === 'price_asc' ? '▲ Tăng dần' : (sortBy === 'price_desc' ? '▼ Giảm dần' : '⇅') }}
+                  {{ sortBy === 'price_asc' ? '▲' : (sortBy === 'price_desc' ? '▼' : '⇅') }}
                 </span>
               </div>
             </th>
-            <th class="th-sortable" @click="toggleSort('stock')" title="Nhấp để sắp xếp theo Số lượng tồn kho">
-              <div class="th-content">
+            <th class="th-sortable" @click="toggleSort('stock')" title="Sắp xếp theo Tồn kho (Tăng / Giảm)">
+              <div class="th-header-inner">
                 <span>Tồn Kho</span>
                 <span :class="['sort-badge', sortBy.startsWith('stock_') ? 'sort-active' : '']">
-                  {{ sortBy === 'stock_asc' ? '▲ Ít nhất' : (sortBy === 'stock_desc' ? '▼ Nhiều nhất' : '⇅') }}
+                  {{ sortBy === 'stock_asc' ? '▲' : (sortBy === 'stock_desc' ? '▼' : '⇅') }}
                 </span>
               </div>
             </th>
-            <th>Nổi Bật</th>
-            <th>Thao Tác</th>
+            <th class="text-right">Thao Tác</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="7" class="text-center py-4">Đang tải sản phẩm...</td>
+            <td colspan="6" class="text-center py-6 text-muted">Đang tải sản phẩm...</td>
           </tr>
           <tr v-else-if="errorMessage">
-            <td colspan="7" class="text-center py-4 error-cell">
+            <td colspan="6" class="text-center py-6 error-cell">
               <span>{{ errorMessage }}</span>
               <button @click="fetchProducts(currentPage)" class="btn-sm btn-retry">Thử lại</button>
             </td>
           </tr>
           <tr v-else-if="products.length === 0">
-            <td colspan="7" class="empty-state">
+            <td colspan="6" class="empty-state">
               <div class="empty-state-content">
                 <div class="empty-icon">🔍</div>
                 <h3 class="empty-title">Không tìm thấy sản phẩm nào</h3>
@@ -202,8 +191,11 @@
             </td>
           </tr>
           <tr v-for="prod in products" :key="prod.id" v-else>
-            <td><code>{{ prod.sku }}</code></td>
-            <td class="font-medium">{{ prod.name }}</td>
+            <td class="text-center">
+              <span v-if="prod.is_featured" class="star-icon-featured" title="Sản phẩm nổi bật">⭐</span>
+              <span v-else class="text-muted text-dim-dash">—</span>
+            </td>
+            <td class="font-medium prod-name-cell" :title="prod.name">{{ prod.name }}</td>
             <td>
               <span class="category-pill" :title="'ID: #' + prod.category_id">
                 {{ getCategoryName(prod.category_id) }}
@@ -213,12 +205,8 @@
             <td>
               <StockBadge :stock="prod.stock" />
             </td>
-            <td>
-              <span v-if="prod.is_featured" class="badge-featured">⭐ Nổi bật</span>
-              <span v-else class="text-muted">—</span>
-            </td>
-            <td>
-              <div class="action-buttons">
+            <td class="text-right">
+              <div class="action-buttons justify-end">
                 <button
                   @click="openStockModal(prod)"
                   class="btn-sm btn-stock"
@@ -313,10 +301,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '../../lib/api';
 import type { Product, Category } from '../../types';
 import StockBadge from '../../components/StockBadge.vue';
+
+const stickyFilterBarRef = ref<HTMLElement | null>(null);
+const filterBarHeight = ref(68);
+let filterBarResizeObserver: ResizeObserver | null = null;
 
 const products = ref<Product[]>([]);
 const categories = ref<Category[]>([]);
@@ -338,7 +330,6 @@ const isFeaturedSorted = ref(false);
 
 // Tìm kiếm & Danh mục
 const searchQuery = ref('');
-const appliedSearch = ref('');
 const selectedCategoryId = ref<number | ''>('');
 
 // Bộ lọc giá & Sắp xếp
@@ -349,9 +340,12 @@ const appliedMaxPrice = ref<string>('');
 const sortBy = ref<string>('');
 const validationWarning = ref<string>('');
 
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let priceDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 const isFilterActive = computed(() => {
   return (
-    appliedSearch.value.trim() !== '' ||
+    searchQuery.value.trim() !== '' ||
     selectedCategoryId.value !== '' ||
     appliedMinPrice.value !== '' ||
     appliedMaxPrice.value !== '' ||
@@ -362,8 +356,8 @@ const isFilterActive = computed(() => {
 const activeFilterText = computed(() => {
   const parts: string[] = [];
 
-  if (appliedSearch.value.trim() !== '') {
-    parts.push(`Từ khóa: "${appliedSearch.value.trim()}"`);
+  if (searchQuery.value.trim() !== '') {
+    parts.push(`Tìm kiếm: "${searchQuery.value.trim()}"`);
   }
 
   if (selectedCategoryId.value !== '') {
@@ -387,6 +381,17 @@ const activeFilterText = computed(() => {
 
   return parts.join(' • ');
 });
+
+function handleRealtimeSearch() {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    fetchProducts(1);
+  }, 250);
+}
+
+function handleCategoryChange() {
+  fetchProducts(1);
+}
 
 function handlePriceKeydown(event: KeyboardEvent) {
   const allowed = [
@@ -417,6 +422,14 @@ function sanitizePriceInput(field: 'min' | 'max') {
   else maxPriceInput.value = sanitized;
 }
 
+function handlePriceInput(field: 'min' | 'max') {
+  sanitizePriceInput(field);
+  if (priceDebounceTimer) clearTimeout(priceDebounceTimer);
+  priceDebounceTimer = setTimeout(() => {
+    applyPriceFilter();
+  }, 350);
+}
+
 function handlePricePaste(event: ClipboardEvent, targetField: 'min' | 'max') {
   event.preventDefault();
   const text = event.clipboardData?.getData('text') || '';
@@ -425,9 +438,10 @@ function handlePricePaste(event: ClipboardEvent, targetField: 'min' | 'max') {
   if (parts.length > 2) sanitized = parts[0] + '.' + parts.slice(1).join('');
   if (targetField === 'min') minPriceInput.value = sanitized;
   else maxPriceInput.value = sanitized;
+  handlePriceInput(targetField);
 }
 
-function handleFilter() {
+function applyPriceFilter() {
   validationWarning.value = '';
 
   const min = minPriceInput.value !== '' ? Number(minPriceInput.value) : null;
@@ -445,26 +459,8 @@ function handleFilter() {
     validationWarning.value = `Giá tối thiểu ($${min}) đang lớn hơn giá tối đa ($${max}).`;
   }
 
-  appliedSearch.value = searchQuery.value;
   appliedMinPrice.value = minPriceInput.value;
   appliedMaxPrice.value = maxPriceInput.value;
-  fetchProducts(1);
-}
-
-function handleReset() {
-  searchQuery.value = '';
-  appliedSearch.value = '';
-  selectedCategoryId.value = '';
-  minPriceInput.value = '';
-  maxPriceInput.value = '';
-  appliedMinPrice.value = '';
-  appliedMaxPrice.value = '';
-  sortBy.value = '';
-  validationWarning.value = '';
-  fetchProducts(1);
-}
-
-function handleSortChange() {
   fetchProducts(1);
 }
 
@@ -476,6 +472,18 @@ function toggleSort(field: 'name' | 'price' | 'stock') {
   } else {
     sortBy.value = `${field}_asc`;
   }
+  fetchProducts(1);
+}
+
+function handleReset() {
+  searchQuery.value = '';
+  selectedCategoryId.value = '';
+  minPriceInput.value = '';
+  maxPriceInput.value = '';
+  appliedMinPrice.value = '';
+  appliedMaxPrice.value = '';
+  sortBy.value = '';
+  validationWarning.value = '';
   fetchProducts(1);
 }
 
@@ -504,8 +512,8 @@ async function fetchProducts(page = 1) {
       page,
       page_size: 20,
     };
-    if (appliedSearch.value.trim()) {
-      params.search = appliedSearch.value.trim();
+    if (searchQuery.value.trim()) {
+      params.search = searchQuery.value.trim();
     }
     if (selectedCategoryId.value !== '') {
       params.category_id = Number(selectedCategoryId.value);
@@ -631,6 +639,25 @@ async function handleDelete(id: number) {
 onMounted(() => {
   fetchCategories();
   fetchProducts();
+
+  if (stickyFilterBarRef.value) {
+    const updateHeight = () => {
+      if (stickyFilterBarRef.value) {
+        filterBarHeight.value = stickyFilterBarRef.value.offsetHeight;
+      }
+    };
+    updateHeight();
+    filterBarResizeObserver = new ResizeObserver(updateHeight);
+    filterBarResizeObserver.observe(stickyFilterBarRef.value);
+  }
+});
+
+onUnmounted(() => {
+  if (filterBarResizeObserver) {
+    filterBarResizeObserver.disconnect();
+  }
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  if (priceDebounceTimer) clearTimeout(priceDebounceTimer);
 });
 </script>
 
@@ -682,9 +709,10 @@ onMounted(() => {
   background: #0284c7;
   color: #fff;
   border: none;
-  padding: 0.6rem 1.2rem;
+  padding: 0.55rem 1.15rem;
   border-radius: 0.375rem;
   font-weight: 600;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -696,146 +724,237 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-/* Filter Card */
-.filter-card {
+/* Table Card & Sticky Filter Bar */
+.table-card {
   background: #1e293b;
   border: 1px solid #334155;
-  border-radius: 0.5rem;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.5rem;
+  border-radius: 0.625rem;
+  box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.3);
+  position: relative;
 }
-.filter-header {
-  margin-bottom: 0.85rem;
+
+.sticky-filter-bar {
+  position: sticky;
+  top: 58px;
+  z-index: 20;
+  background: #162032;
+  border-bottom: 1px solid #334155;
+  border-top-left-radius: 0.625rem;
+  border-top-right-radius: 0.625rem;
+  padding: 0.75rem 1rem;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
-.filter-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #f8fafc;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+
 .filter-controls {
   display: flex;
   align-items: flex-end;
-  gap: 0.85rem;
+  gap: 0.65rem;
   flex-wrap: wrap;
 }
+
 .filter-item {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
-.search-wrapper {
-  flex: 1;
-  min-width: 200px;
-}
-.input-label {
-  font-size: 0.8rem;
+
+.control-label {
+  font-size: 0.72rem;
   color: #94a3b8;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
+
 .form-control {
   background: #0f172a;
   border: 1px solid #334155;
   border-radius: 0.375rem;
   color: #f8fafc;
-  font-size: 0.875rem;
-  padding: 0.55rem 0.85rem;
+  font-size: 0.825rem;
+  padding: 0.4rem 0.65rem;
   outline: none;
-  height: 38px;
+  height: 35px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
+
 .form-control:focus {
   border-color: #0284c7;
   box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
 }
-.search-input {
-  width: 100%;
+
+.search-item {
+  flex: 1;
+  min-width: 180px;
 }
-.select-control {
-  cursor: pointer;
-  min-width: 160px;
-}
-.price-input-wrapper {
-  width: 130px;
-}
-.input-with-prefix {
+
+.input-with-icon {
   position: relative;
   display: flex;
   align-items: center;
 }
+
+.search-icon {
+  position: absolute;
+  left: 0.65rem;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding-left: 1.85rem;
+}
+
+.category-item .select-control {
+  cursor: pointer;
+  min-width: 155px;
+}
+
+.sort-item .select-control {
+  cursor: pointer;
+  min-width: 165px;
+}
+
+.price-inputs-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.input-with-prefix {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 95px;
+}
+
 .currency-symbol {
   position: absolute;
-  left: 0.75rem;
+  left: 0.55rem;
   color: #64748b;
   font-weight: 600;
   pointer-events: none;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
+
 .price-input {
   width: 100%;
-  padding-left: 1.65rem;
+  padding-left: 1.35rem;
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
 .price-input::-webkit-outer-spin-button,
 .price-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 .range-divider {
   color: #64748b;
-  padding: 0 0.15rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  margin-bottom: 0.6rem;
 }
-.filter-btn-group {
+
+/* Nút Sản phẩm nổi bật trong Sticky Bar */
+.featured-item {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.3rem;
 }
+
+.btn-featured-toggle {
+  height: 35px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(234, 179, 8, 0.1);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  white-space: nowrap;
+}
+
+.btn-featured-toggle:hover {
+  background: rgba(234, 179, 8, 0.2);
+  border-color: rgba(234, 179, 8, 0.5);
+}
+
+.btn-featured-toggle.active {
+  background: #eab308;
+  color: #0f172a;
+  border-color: #eab308;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.35);
+}
+
+.star-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
 .btn-search {
-  padding: 0.55rem 1.25rem;
-  font-size: 0.875rem;
-  height: 38px;
+  padding: 0 0.95rem;
+  font-size: 0.825rem;
+  height: 35px;
 }
+
 .btn-reset {
   background: #334155;
   color: #cbd5e1;
   border: 1px solid #475569;
-  padding: 0.55rem 1rem;
+  padding: 0 0.8rem;
   border-radius: 0.375rem;
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.825rem;
   cursor: pointer;
-  height: 38px;
+  height: 35px;
   transition: all 0.2s;
 }
+
 .btn-reset:hover {
   background: #475569;
   color: #f8fafc;
 }
+
 .filter-warning {
-  margin-top: 0.85rem;
-  padding: 0.65rem 0.85rem;
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.75rem;
   background: rgba(234, 179, 8, 0.12);
   border: 1px solid rgba(234, 179, 8, 0.35);
   color: #facc15;
   border-radius: 0.375rem;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
+
+.active-filter-badge-row {
+  margin-top: 0.55rem;
+}
+
 .active-filter-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.85rem;
+  gap: 0.45rem;
   background: rgba(2, 132, 199, 0.15);
   border: 1px solid rgba(2, 132, 199, 0.35);
   color: #38bdf8;
-  padding: 0.35rem 0.85rem;
+  padding: 0.25rem 0.7rem;
   border-radius: 9999px;
-  font-size: 0.825rem;
+  font-size: 0.775rem;
 }
+
 .btn-clear-tag {
   background: none;
   border: none;
@@ -843,104 +962,169 @@ onMounted(() => {
   cursor: pointer;
   font-weight: 700;
   padding: 0 0.15rem;
+  font-size: 0.75rem;
+  line-height: 1;
 }
 
-/* Table */
-.table-container {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 0.5rem;
-  overflow: hidden;
+.btn-clear-tag:hover {
+  color: #fff;
 }
+
+/* Data Table */
 .data-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
+
 .data-table th {
+  position: sticky;
+  top: calc(58px + var(--filter-bar-h, 68px));
+  z-index: 15;
   background: #0f172a;
   color: #94a3b8;
-  padding: 0.85rem 1rem;
-  font-size: 0.8rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.74rem;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
   border-bottom: 1px solid #334155;
   text-align: left;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
 }
+
 .data-table td {
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid #334155;
   color: #cbd5e1;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  vertical-align: middle;
 }
+
+.data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.prod-name-cell {
+  font-weight: 600;
+  color: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .th-sortable {
   cursor: pointer;
   user-select: none;
   transition: background-color 0.2s;
 }
+
 .th-sortable:hover {
-  background-color: #1e293b !important;
+  background-color: #1a2538 !important;
 }
-.th-content {
+
+.th-content,
+.th-header-inner {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
+
 .sort-badge {
-  font-size: 0.725rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 0.68rem;
   color: #64748b;
-  padding: 0.15rem 0.4rem;
   border-radius: 0.25rem;
   background: rgba(51, 65, 85, 0.4);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  line-height: 1;
 }
+
 .sort-badge.sort-active {
   background: rgba(2, 132, 199, 0.25);
   color: #38bdf8;
   font-weight: 700;
   border: 1px solid rgba(2, 132, 199, 0.4);
 }
+
 .category-pill {
   display: inline-block;
   background: rgba(56, 189, 248, 0.1);
   color: #38bdf8;
-  padding: 0.2rem 0.5rem;
+  padding: 0.18rem 0.5rem;
   border-radius: 0.25rem;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
+
 .price-tag {
   color: #38bdf8;
   font-weight: 600;
 }
-.badge-featured {
-  background: rgba(234, 179, 8, 0.2);
-  color: #facc15;
-  font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 9999px;
-  font-weight: 600;
+
+.col-featured-th {
+  font-size: 0.9rem !important;
+  user-select: none;
 }
+
+.star-icon-featured {
+  font-size: 1.05rem;
+  line-height: 1;
+  display: inline-block;
+  filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.45));
+}
+
+.text-dim-dash {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
 .action-buttons {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
+
 .btn-sm {
-  padding: 0.35rem 0.65rem;
+  padding: 0.3rem 0.6rem;
   font-size: 0.75rem;
   border-radius: 0.25rem;
   border: none;
   cursor: pointer;
   font-weight: 500;
 }
+
 .btn-stock {
   background: #0284c7;
   color: #fff;
 }
+
 .btn-stock:hover {
   background: #0369a1;
 }
+
 .btn-delete {
   background: #ef4444;
   color: #fff;
 }
+
 .btn-delete:hover {
   background: #dc2626;
 }
