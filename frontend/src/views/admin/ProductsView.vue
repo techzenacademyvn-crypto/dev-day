@@ -87,6 +87,24 @@
 
     <!-- Task 5 (Ngọc): Thanh công cụ Gom nhóm & Sắp xếp kiểm kê -->
     <div class="view-controls-bar">
+      <!-- Tabs chuyển đổi chế độ xem: Hoạt động vs Mục đã ẩn -->
+      <div class="status-mode-tabs">
+        <button
+          type="button"
+          :class="['mode-tab-btn', !showHidden ? 'active' : '']"
+          @click="setShowHidden(false)"
+        >
+          <span>📦</span> Sản phẩm hoạt động
+        </button>
+        <button
+          type="button"
+          :class="['mode-tab-btn tab-hidden-mode', showHidden ? 'active' : '']"
+          @click="setShowHidden(true)"
+        >
+          <span>👁️‍🗨️</span> Danh sách mục đã ẩn
+        </button>
+      </div>
+
       <div class="control-box group-control">
         <label for="group-mode-select" class="control-label">
           <span class="control-icon">📂</span> Chế độ gom nhóm:
@@ -150,15 +168,22 @@
           <tr v-else-if="filteredProducts.length === 0">
             <td colspan="8" class="empty-table-cell">
               <div class="empty-filter-box">
-                <span class="empty-icon">📦</span>
-                <p class="empty-msg">Không tìm thấy sản phẩm nào phù hợp với bộ lọc hiện tại</p>
+                <span class="empty-icon">{{ showHidden ? '👁️‍🗨️' : '📦' }}</span>
+                <p class="empty-msg">
+                  {{ showHidden ? 'Không có sản phẩm nào trong danh sách mục đã ẩn' : 'Không tìm thấy sản phẩm nào phù hợp với bộ lọc hiện tại' }}
+                </p>
                 <div class="empty-actions">
-                  <button @click="resetPriceFilter" class="btn-reset-inline">
-                    🔄 Đặt lại giá
+                  <button v-if="showHidden" @click="setShowHidden(false)" class="btn-reset-inline">
+                    ⬅️ Quay về danh sách hoạt động
                   </button>
-                  <button @click="resetAllFilters" class="btn-reset-empty">
-                    Xóa tất cả bộ lọc
-                  </button>
+                  <template v-else>
+                    <button @click="resetPriceFilter" class="btn-reset-inline">
+                      🔄 Đặt lại giá
+                    </button>
+                    <button @click="resetAllFilters" class="btn-reset-empty">
+                      Xóa tất cả bộ lọc
+                    </button>
+                  </template>
                 </div>
               </div>
             </td>
@@ -210,6 +235,15 @@
               <td class="action-cell">
                 <div class="action-buttons">
                   <button
+                    v-if="showHidden"
+                    @click="handleToggleHide(prod)"
+                    class="btn-sm btn-restore"
+                    title="Khôi phục sản phẩm quay lại danh sách hoạt động"
+                  >
+                    🔄 Khôi phục
+                  </button>
+                  <button
+                    v-else
                     @click="handleToggleHide(prod)"
                     class="btn-sm btn-hide"
                     title="Ẩn sản phẩm khỏi danh sách công khai"
@@ -265,6 +299,7 @@ const currentPage = ref(1);
 const totalPages = ref(1);
 const loading = ref(false);
 const errorMessage = ref('');
+const showHidden = ref(false);
 
 // Bộ nhớ cache tên danh mục để hiển thị đẹp thay vì ID thô
 const categoryMap = ref<Record<number, string>>({});
@@ -489,6 +524,7 @@ async function fetchProducts(page = 1) {
     const params: Record<string, any> = {
       page,
       page_size: 50,
+      show_hidden: showHidden.value,
     };
 
     if (searchKeyword.value.trim()) {
@@ -527,6 +563,14 @@ async function fetchProducts(page = 1) {
   } finally {
     loading.value = false;
   }
+}
+
+// Đổi chế độ xem danh sách hoạt động / danh sách mục đã ẩn
+function setShowHidden(val: boolean) {
+  if (showHidden.value === val) return;
+  showHidden.value = val;
+  currentPage.value = 1;
+  fetchProducts(1);
 }
 
 // Xử lý đổi tiêu chí sắp xếp (Task 5)
@@ -576,6 +620,7 @@ function resetAllFilters() {
   selectedCategoryId.value = null;
   selectedStockTab.value = 'all';
   isFeaturedOnly.value = false;
+  showHidden.value = false;
   resetPriceFilter();
   currentPage.value = 1;
   fetchProducts(1);
@@ -601,23 +646,27 @@ function showToast(message: string, type: 'success' | 'error' = 'success') {
   }, 3000);
 }
 
-// Xử lý Ẩn sản phẩm qua API PATCH
+// Xử lý Ẩn / Khôi phục sản phẩm qua API PATCH
 async function handleToggleHide(prod: Product) {
   try {
     const res = await api.patch(`/admin/products/${prod.id}/toggle-status`);
     if (res.data.success) {
-      showToast(`Đã ẩn sản phẩm "${prod.name}" thành công!`, 'success');
-      // Tự động gọi lại hàm fetch danh sách sản phẩm hiện tại để sản phẩm biến mất ngay lập tức và bù dòng từ trang sau
+      const isNowHidden = res.data.data?.status === 'hidden';
+      const msg = isNowHidden
+        ? `Đã ẩn sản phẩm "${prod.name}" thành công!`
+        : `Đã khôi phục sản phẩm "${prod.name}" hoạt động trở lại!`;
+      showToast(msg, 'success');
+      // Tự động gọi lại hàm fetch danh sách sản phẩm hiện tại để bảng lập tức cập nhật
       await fetchProducts(currentPage.value);
     } else {
       showToast(res.data.message || 'Không thể thay đổi trạng thái sản phẩm', 'error');
     }
   } catch (err: any) {
     showToast(
-      err.response?.data?.error?.message || err.response?.data?.message || 'Có lỗi xảy ra khi ẩn sản phẩm',
+      err.response?.data?.error?.message || err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái',
       'error'
     );
-    console.error('Lỗi khi ẩn sản phẩm:', err);
+    console.error('Lỗi khi đổi trạng thái sản phẩm:', err);
   }
 }
 
@@ -1045,6 +1094,21 @@ onMounted(() => {
   font-weight: 600;
 }
 
+.btn-restore {
+  background: #10b981;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.btn-restore:hover {
+  background: #059669;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
 .btn-delete {
   background: #ef4444;
   color: #fff;
@@ -1053,6 +1117,50 @@ onMounted(() => {
 
 .btn-delete:hover {
   background: #dc2626;
+}
+
+/* Tabs chế độ xem Hoạt động / Mục đã ẩn */
+.status-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #0f172a;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+}
+
+.mode-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.mode-tab-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mode-tab-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.mode-tab-btn.tab-hidden-mode.active {
+  background: #d97706;
+  color: #ffffff;
 }
 
 /* Toast thông báo thời gian thực */
