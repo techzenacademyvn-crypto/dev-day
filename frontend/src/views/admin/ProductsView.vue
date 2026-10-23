@@ -79,7 +79,7 @@
             </td>
           </tr>
 
-          <!-- Thông báo khi không có sản phẩm nào trong khoảng giá -->
+          <!-- Empty State -->
           <tr v-else-if="filteredProducts.length === 0">
             <td colspan="7" class="empty-table-cell">
               <div class="empty-filter-box">
@@ -128,7 +128,7 @@
       </table>
     </div>
 
-    <!-- Phân trang (giữ nguyên bộ lọc khi chuyển trang) -->
+    <!-- Phân trang -->
     <div class="pagination-bar" v-if="totalProducts > 0">
       <span>Trang {{ currentPage }} / {{ totalPages }} (Tổng cộng {{ totalProducts }} sản phẩm)</span>
       <div class="pagination-btns">
@@ -166,21 +166,19 @@ const totalPages = ref(1);
 const loading = ref(false);
 const errorMessage = ref('');
 
-// Bộ nhớ cache tên danh mục để hiển thị đẹp thay vì ID thô
+// Cache tên danh mục
 const categoryMap = ref<Record<number, string>>({});
 
-// State bộ lọc hiện tại
+// State bộ lọc
 const searchKeyword = ref('');
 const selectedCategoryId = ref<number | null>(null);
-
-// Bộ lọc sản phẩm nổi bật
 const isFeaturedOnly = ref(false);
 
 // Bộ lọc khoảng giá
 const priceFilterRef = ref<InstanceType<typeof PriceFilter> | null>(null);
 const priceRange = ref<[number, number]>([0, 2000000]);
 
-// Lọc sản phẩm hiển thị theo khoảng giá đã chọn (client-side)
+// Lọc client-side theo giá
 const filteredProducts = computed(() => {
   const [minPrice, maxPrice] = priceRange.value;
   return products.value.filter((prod) => {
@@ -189,7 +187,6 @@ const filteredProducts = computed(() => {
   });
 });
 
-// Lấy danh mục để hiển thị tên trên bảng
 async function fetchCategoriesMap() {
   try {
     const res = await api.get('/categories', {
@@ -213,10 +210,7 @@ async function fetchProducts(page = 1) {
   currentPage.value = page;
 
   try {
-    const params: Record<string, any> = {
-      page,
-      page_size: 20,
-    };
+    const params: Record<string, any> = { page, page_size: 20 };
 
     if (searchKeyword.value.trim()) {
       params.search = searchKeyword.value.trim();
@@ -244,7 +238,7 @@ async function fetchProducts(page = 1) {
   }
 }
 
-// Xử lý khi bộ lọc search/category thay đổi: reset về trang 1
+// Bộ lọc search/category thay đổi
 function handleFilterChange(payload: { search: string; categoryId: number | null }) {
   searchKeyword.value = payload.search;
   selectedCategoryId.value = payload.categoryId;
@@ -252,7 +246,7 @@ function handleFilterChange(payload: { search: string; categoryId: number | null
   fetchProducts(1);
 }
 
-// Toggle lọc nổi bật: reset về trang 1
+// Toggle lọc nổi bật
 function toggleFeatured() {
   isFeaturedOnly.value = !isFeaturedOnly.value;
   currentPage.value = 1;
@@ -273,7 +267,6 @@ function resetAllFilters() {
   fetchProducts(1);
 }
 
-// Chuyển trang (giữ nguyên bộ lọc)
 function changePage(page: number) {
   fetchProducts(page);
 }
